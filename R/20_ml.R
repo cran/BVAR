@@ -77,10 +77,13 @@ bv_ml <- function(
                          x, ". Make sure the function works properly.")
                  stop(e)})
     })
-    Y <- rbind(do.call(rbind,
-                       lapply(dmy, function(x) matrix(x[["Y"]], ncol = M))), Y)
-    X <- rbind(do.call(rbind,
-                       lapply(dmy, function(x) matrix(x[["X"]], ncol = K))), X)
+    Y_dummy <- do.call(rbind,
+                       lapply(dmy, function(x) matrix(x[["Y"]], ncol = M)))
+    X_dummy <- do.call(rbind,
+                       lapply(dmy, function(x) matrix(x[["X"]], ncol = K)))
+    N_dummy <- nrow(Y_dummy)
+    Y <- rbind(Y_dummy, Y)
+    X <- rbind(X_dummy, X)
     N <- nrow(Y)
   }
 
@@ -88,38 +91,41 @@ bv_ml <- function(
   # Calc --------------------------------------------------------------------
 
   omega_inv <- diag(1 / omega)
-  XX <- crossprod(X)
-  beta_hat <- solve(XX + omega_inv) %*% (crossprod(X, Y) +
-                                           omega_inv %*% priors[["b"]])
-  sse <- crossprod(Y - X %*% beta_hat)
   psi_inv <- solve(sqrt(psi))
-  omega_ml <- diag(sqrt(omega)) %*% XX %*% diag(sqrt(omega))
-  psi_ml <- psi_inv %*%
-    (sse + t(beta_hat - priors[["b"]]) %*% omega_inv %*%
-       (beta_hat - priors[["b"]])) %*% psi_inv
-
-  # Eigenvalues + 1 as another way of computing the determinants
-  omega_ml_ev <- Re(eigen(omega_ml, only.values = TRUE)[["values"]])
-  omega_ml_ev[omega_ml_ev < 1e-12] <- 0
-  omega_ml_ev <- omega_ml_ev + 1
-  psi_ml_ev <- Re(eigen(psi_ml, only.values = TRUE)[["values"]])
-  psi_ml_ev[psi_ml_ev < 1e-12] <- 0
-  psi_ml_ev <- psi_ml_ev + 1
+  omega_sqrt <- diag(sqrt(omega))
+  b <- priors[["b"]]
 
   # Likelihood
-  log_ml <- (-M * N * log(pi) / 2) +
-    sum(lgamma(((N + M + 2) - 0:(M - 1)) / 2) -
-        lgamma(((M + 2) - 0:(M -1)) / 2)) -
-    (N * sum(log(diag(psi))) / 2) - (M * sum(log(omega_ml_ev)) / 2) -
-    ((N + M + 2) * sum(log(psi_ml_ev)) / 2)
+  ev_full <- get_ev(omega_inv, omega_sqrt, psi_inv, X, Y, b, beta_hat = TRUE)
+  log_ml <- get_logml(M, N, psi, ev_full[["omega"]], ev_full[["psi"]])
+
+  if(length(priors[["dummy"]]) > 0) {
+    ev_dummy <- get_ev(omega_inv, omega_sqrt, psi_inv,
+                       X_dummy, Y_dummy, b, beta_hat = FALSE)
+    log_ml <- log_ml -
+      get_logml(M, N_dummy, psi, ev_dummy[["omega"]], ev_dummy[["psi"]])
+  }
 
   # Add prior-pdfs
-  if(length(priors[["dummy"]]) > 0)
-    log_ml <- log_ml + sum(sapply(priors[["dummy"]], function(x) {
-      log(dgamma(pars[[x]],
-                 shape = priors[[x]][["coef"]][["k"]],
-                 scale = priors[[x]][["coef"]][["theta"]]))
-    }))
+  log_ml <- log_ml + sum(sapply(priors[["hyper"]][which(!priors$hyper == "psi")],
+                                function(x) {
+                                  log(dgamma(
+                                    pars[[x]],
+                                    shape = priors[[x]][["coef"]][["k"]],
+                                    scale = priors[[x]][["coef"]][["theta"]]))
+                                })
+                         )
+
+  if(any(priors[["hyper"]] == "psi")) {
+    log_ml <- log_ml + sum(sapply(names(pars)[grep("^psi[0-9]*", names(pars))],
+                                  function(x) {
+                                    log_igamma_pdf(
+                                      pars[[x]],
+                                      scale = priors[["psi"]][["scale"]],
+                                      shape = priors[["psi"]][["shape"]])
+                                    })
+                           )
+  }
 
 
   # Output ------------------------------------------------------------------
@@ -128,5 +134,6 @@ bv_ml <- function(
 
   # Return log_ml and objects necessary for drawing
   return(list("log_ml" = log_ml, "X" = X, "N" = N, "psi" = psi,
-              "sse" = sse, "beta_hat" = beta_hat, "omega_inv" = omega_inv))
+              "sse" = ev_full[["sse"]], "beta_hat" = ev_full[["beta_hat"]],
+              "omega_inv" = omega_inv))
 }

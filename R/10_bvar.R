@@ -147,11 +147,15 @@ bvar <- function(
   } else if(!all(dim(priors[["b"]]) == c(K, M))) {
     stop("Dimensions of prior mean (b) do not match the data.")
   }
-  if(length(priors[["psi"]]) == 1 && priors[["psi"]] == "auto") {
-    priors[["psi"]] <- auto_psi(Y, lags)
+  if(priors[["psi"]][["mode"]] == "auto") {
+    psi_temp <- auto_psi(Y, lags)
+    priors[["psi"]][["mode"]] <- psi_temp[["mode"]]
+    priors[["psi"]][["min"]] <- psi_temp[["min"]]
+    priors[["psi"]][["max"]] <- psi_temp[["max"]]
   }
-  if(!all(vapply(priors[["psi"]], function(x) length(x) == M, logical(1)))) {
-    stop("Dimension of the psi do not match the data.")
+  if(!all(vapply(priors[["psi"]][3:length(priors[["psi"]])],
+                 function(x) length(x) == M, logical(1)))) {
+    stop("Dimensions of psi do not match the data.")
   }
 
   # Parameters
@@ -343,7 +347,7 @@ bvar <- function(
 
   if(verbose) {
     close(pb)
-    cat("Finished after ", format(timer), ".\n", sep = "")
+    cat("Finished after ", format(round(timer, 2)), ".\n", sep = "")
   }
 
 
