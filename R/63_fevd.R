@@ -1,7 +1,7 @@
 #' Forecast error variance decompostions draws
 #'
 #' Computes Forecast error variance decompostions (FEVDs) using the impulse
-#' response draws obtained via \code{\link{compute_irf}}.
+#' response draws obtained from \code{\link{compute_irf}}.
 #'
 #' @param irf_comp Numeric matrix. Contains a draw of impulse responses
 #' obtained from \code{\link{compute_irf}}.
@@ -11,7 +11,7 @@
 #' @return Returns a numeric matrix of FEVDs.
 #'
 #' @noRd
-fevd <- function(irf_comp, M, horizon) {
+compute_fevd <- function(irf_comp, M, horizon) {
 
   fevd_comp <- aperm(apply(irf_comp * irf_comp, c(1, 3), cumsum), c(2, 3, 1))
   accm <- matrix(0, M, M)
