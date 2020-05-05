@@ -1,62 +1,59 @@
 #' Summary method for Bayesian VARs
 #'
 #' Retrieves several outputs of interest, including the median coefficient
-#' matrix, the median variance-covariance matrix, and the Log-Likelihood.
+#' matrix, the median variance-covariance matrix, and the log-likelihood.
 #' Separate summary methods exist for impulse responses and forecasts.
 #'
 #' @param object A \code{bvar} object, obtained from \code{\link{bvar}}.
 #' @param ... Not used.
 #'
-#' @param x A \code{bvar_summary} object.
-#'
 #' @return Returns a list of class \code{bvar_summary} with elements that can
 #' can be accessed individually:
 #' \itemize{
-#'   \item \code{bvar} - \emph{object}, the \code{bvar} object provided.
-#'   \item \code{coef} - Coefficient values from \code{\link{coef.bvar}}.
+#'   \item \code{bvar} - the \code{bvar} object provided.
+#'   \item \code{coef} - coefficient values from \code{\link{coef.bvar}}.
 #'   \item \code{vcov} - VCOV values from \code{\link{vcov.bvar}}.
-#'   \item \code{logLik} - The Log-Likelihood from \code{\link{logLik.bvar}}.
+#'   \item \code{logLik} - the log-likelihood from \code{\link[stats]{logLik}}.
 #' }
 #'
-#' @seealso \code{\link{bvar}}; \code{\link{coef.bvar}};
-#' \code{\link{logLik.bvar}}
+#' @seealso \code{\link{bvar}};
+#' \code{\link{predict.bvar}}; \code{\link{irf.bvar}}
+#'
+#' @keywords BVAR analysis
 #'
 #' @export
 #'
 #' @examples
 #' \donttest{
-#' data <- matrix(rnorm(200), ncol = 2)
-#' x <- bvar(data, lags = 2)
+#' # Access a subset of the fred_qd dataset
+#' data <- fred_qd[, c("CPIAUCSL", "UNRATE", "FEDFUNDS")]
+#' # Transform it to be stationary
+#' data <- fred_transform(data, codes = c(5, 5, 1), lag = 4)
+#'
+#' # Estimate a BVAR using one lag, default settings and very few draws
+#' x <- bvar(data, lags = 1, n_draw = 1000L, n_burn = 200L, verbose = FALSE)
+#'
 #' summary(x)
 #' }
 summary.bvar <- function(object, ...) {
 
   if(!inherits(object, "bvar")) {stop("Please provide a `bvar` object.")}
 
-  coef_x <- coef(object)
-  vcov_x <- vcov(object)
-  logLik_x <- logLik(object)
-
-  out <- list(
-    "bvar" = object,
-    "coef" = coef_x,
-    "vcov" = vcov_x,
-    "logLik" = logLik_x
-  )
-  class(out) <- "bvar_summary"
+  out <- structure(list(
+    "bvar" = object, "coef" = coef.bvar(object), "vcov" = vcov.bvar(object),
+    "logLik" = logLik.bvar(object)), class = "bvar_summary")
 
   return(out)
 }
 
 
-#' @rdname summary.bvar
 #' @export
 print.bvar_summary <- function(x, ...) {
 
   print(x[["bvar"]])
 
-  cat("\n"); print(x[["coef"]])
-  cat("\n"); print(x[["vcov"]])
+  cat("\n"); print.bvar_coefs(x[["coef"]])
+  cat("\n"); print.bvar_vcovs(x[["vcov"]])
   cat("\n"); cat("Log-Likelihood:", x[["logLik"]], "\n")
 
   return(invisible(x))

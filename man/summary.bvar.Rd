@@ -2,43 +2,46 @@
 % Please edit documentation in R/96_summary.R
 \name{summary.bvar}
 \alias{summary.bvar}
-\alias{print.bvar_summary}
 \title{Summary method for Bayesian VARs}
 \usage{
 \method{summary}{bvar}(object, ...)
-
-\method{print}{bvar_summary}(x, ...)
 }
 \arguments{
 \item{object}{A \code{bvar} object, obtained from \code{\link{bvar}}.}
 
 \item{...}{Not used.}
-
-\item{x}{A \code{bvar_summary} object.}
 }
 \value{
 Returns a list of class \code{bvar_summary} with elements that can
 can be accessed individually:
 \itemize{
-  \item \code{bvar} - \emph{object}, the \code{bvar} object provided.
-  \item \code{coef} - Coefficient values from \code{\link{coef.bvar}}.
+  \item \code{bvar} - the \code{bvar} object provided.
+  \item \code{coef} - coefficient values from \code{\link{coef.bvar}}.
   \item \code{vcov} - VCOV values from \code{\link{vcov.bvar}}.
-  \item \code{logLik} - The Log-Likelihood from \code{\link{logLik.bvar}}.
+  \item \code{logLik} - the log-likelihood from \code{\link[stats]{logLik}}.
 }
 }
 \description{
 Retrieves several outputs of interest, including the median coefficient
-matrix, the median variance-covariance matrix, and the Log-Likelihood.
+matrix, the median variance-covariance matrix, and the log-likelihood.
 Separate summary methods exist for impulse responses and forecasts.
 }
 \examples{
 \donttest{
-data <- matrix(rnorm(200), ncol = 2)
-x <- bvar(data, lags = 2)
+# Access a subset of the fred_qd dataset
+data <- fred_qd[, c("CPIAUCSL", "UNRATE", "FEDFUNDS")]
+# Transform it to be stationary
+data <- fred_transform(data, codes = c(5, 5, 1), lag = 4)
+
+# Estimate a BVAR using one lag, default settings and very few draws
+x <- bvar(data, lags = 1, n_draw = 1000L, n_burn = 200L, verbose = FALSE)
+
 summary(x)
 }
 }
 \seealso{
-\code{\link{bvar}}; \code{\link{coef.bvar}};
-\code{\link{logLik.bvar}}
+\code{\link{bvar}};
+\code{\link{predict.bvar}}; \code{\link{irf.bvar}}
 }
+\keyword{BVAR}
+\keyword{analysis}

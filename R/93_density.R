@@ -1,28 +1,22 @@
 #' Density methods for Bayesian VARs
 #'
-#' Calculates densities of hyperparameters or coefficient values of Bayesian
-#' VARs generated via \code{\link{bvar}}. Wraps standard
-#' \code{\link[stats]{density}} functionality into a \code{list}.
+#' Calculates densities of hyperparameters or coefficient draws from Bayesian
+#' VAR models generated via \code{\link{bvar}}. Wraps standard
+#' \code{\link[stats]{density}} outputs into a \code{list}.
 #'
 #' @param x A \code{bvar} object, obtained from \code{\link{bvar}}.
-#' @param vars Optional character vector used to specify hyperparemeters to
-#' retrieve the density of. The elements need to match the names of
-#' hyperparameters (plus \code{"ml"}). Defaults to \code{NULL}, i.e. all
-#' hyperparameters.
-#' @param vars_response,vars_impulse Optional integer vector with the
-#' positions of coefficient values to retrieve densities of.
-#' \emph{vars_response} corresponds to a specific dependent variable,
-#' \emph{vars_impulse} to an independent one. Note that the constant is found
-#' at position one.
-#' @param ... Fed to \code{\link[stats]{density}} or \code{\link[graphics]{par}}.
-#'
-#' @param mar Numeric vector. Margins for \code{\link[graphics]{par}}.
+#' @param ... Fed to \code{\link[stats]{density}} or
+#' \code{\link[graphics]{par}}.
 #' @param mfrow Numeric vector. Rows for \code{\link[graphics]{par}}.
-#' @param var,n_vars,lag Integer scalars.
+#' @param var,n_vars,lag Integer scalars. Retrieve the position of lag
+#' \emph{lag} of variable \emph{var} given \emph{n_vars} total variables.
+#' @inheritParams plot.bvar
 #'
 #' @return Returns a list with outputs of \code{\link[stats]{density}}.
 #'
-#' @seealso \code{\link{bvar}}
+#' @seealso \code{\link{bvar}}; \code{\link[stats]{density}}
+#'
+#' @keywords BVAR analysis
 #'
 #' @export
 #'
@@ -30,25 +24,31 @@
 #'
 #' @examples
 #' \donttest{
-#' data <- matrix(rnorm(200), ncol = 2)
-#' x <- bvar(data, lags = 2)
+#' # Access a subset of the fred_qd dataset
+#' data <- fred_qd[, c("CPIAUCSL", "UNRATE", "FEDFUNDS")]
+#' # Transform it to be stationary
+#' data <- fred_transform(data, codes = c(5, 5, 1), lag = 4)
 #'
-#' # Get densities of standard hyperparameters
+#' # Estimate a BVAR using one lag, default settings and very few draws
+#' x <- bvar(data, lags = 1, n_draw = 1000L, n_burn = 200L, verbose = FALSE)
+#'
+#' # Get densities of the hyperparameters
 #' density(x)
 #'
 #' # Plot them
 #' plot(density(x))
 #'
-#' # Only get the density of the marginal likelihood
-#' density(x, vars = "ml")
+#' # Only get the densities associated with dependent variable 1
+#' density(x, vars_response = "CPI")
 #'
-#' # Check out the constant's density on both dependents
+#' # Check out the constant's densities
 #' plot(density(x, vars_impulse = 1))
 #'
-#' # Get the density of the 1st lag of variable 2's coefficients with
-#' # respect to variable 1
-#' idx <- independent_index(var = 2, n_vars = 2, lag = 1)
-#' density(x, vars_response = 1, vars_impulse = idx)
+#' # Get the densities of variable three's first lag
+#' density(x, vars = "FEDFUNDS-lag1")
+#'
+#' # Get densities of lambda and the coefficients of dependent variable 2
+#' density(x, vars = c("lambda", "UNRATE"))
 #' }
 density.bvar <- function(
   x, vars = NULL,
@@ -58,9 +58,10 @@ density.bvar <- function(
   if(!inherits(x, "bvar")) {stop("Please provide a `bvar` object.")}
 
 
-  # Get data and apply density --------------------------------------------
+  # Get data and apply density ---
 
-  prep <- prep_data(x, vars, vars_response, vars_impulse)
+  prep <- prep_data(x, vars = vars,
+    vars_response = vars_response, vars_impulse = vars_impulse)
   data <- prep[["data"]]
   vars <- prep[["vars"]]
 
@@ -74,7 +75,6 @@ density.bvar <- function(
 }
 
 
-#' @rdname density.bvar
 #' @export
 print.bvar_density <- function(x, ...) {
 
@@ -117,6 +117,8 @@ plot.bvar_density <- function(
 #' @rdname density.bvar
 #' @export
 independent_index <- function(var, n_vars, lag) {
+
   x <- vapply(c(var, n_vars, lag), int_check, integer(1L))
+
   return(1 + x[2] * (x[3] - 1) + x[1])
 }

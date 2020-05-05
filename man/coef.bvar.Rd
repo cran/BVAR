@@ -3,52 +3,52 @@
 \name{coef.bvar}
 \alias{coef.bvar}
 \alias{vcov.bvar}
-\alias{print.bvar_coefs}
-\alias{print.bvar_vcovs}
 \title{Coefficient and VCOV methods for Bayesian VARs}
 \usage{
-\method{coef}{bvar}(object, conf_bands = 0.5, companion = FALSE, ...)
+\method{coef}{bvar}(
+  object,
+  type = c("quantile", "mean"),
+  conf_bands = 0.5,
+  companion = FALSE,
+  ...
+)
 
-\method{vcov}{bvar}(object, conf_bands = 0.5, ...)
-
-\method{print}{bvar_coefs}(x, digits = 3L, complete = FALSE, ...)
-
-\method{print}{bvar_vcovs}(x, digits = 3L, complete = FALSE, ...)
+\method{vcov}{bvar}(object, type = c("quantile", "mean"), conf_bands = 0.5, ...)
 }
 \arguments{
 \item{object}{A \code{bvar} object, obtained from \code{\link{bvar}}.}
 
-\item{conf_bands}{Numeric vector of desired confidence bands to apply.
+\item{type}{Character scalar. Whether to return quantile or mean values.
+Note that \emph{conf_bands} is ignored for mean values.}
+
+\item{conf_bands}{Numeric vector of confidence bands to apply.
 E.g. for bands at 5\%, 10\%, 90\% and 95\% set this to \code{c(0.05, 0.1)}.
-Note that the median, i.e. \code{0.5} is always included.}
+Note that the median, i.e. 0.5 is always included.}
 
 \item{companion}{Logical scalar. Whether to retrieve the companion matrix of
 coefficients. See \code{\link{companion.bvar}}.}
 
 \item{...}{Not used.}
-
-\item{x}{Object of class \code{bvar_coefs} or \code{bvar_vcovs}.}
-
-\item{digits}{Integer scalar. Fed to \code{\link[base]{round}} and applied
-to numeric outputs (i.e. the quantiles).}
-
-\item{complete}{Logical scalar. Whether to print only medians or all
-available confidence bands.}
 }
 \value{
-Returns a numeric array of class \code{bvar_coefs} /
-\code{bvar_vcovs} with desired values at the specified confidence bands.
+Returns a numeric array of class \code{bvar_coefs} or
+\code{bvar_vcovs} at the specified values.
 }
 \description{
-Retrieves coefficient / variance-covariance values for Bayesian VARs
+Retrieves coefficient / variance-covariance values from Bayesian VAR models
 generated with \code{\link{bvar}}. Note that coefficients are available for
-every stored draw and credible intervals may be set via the
-\emph{conf_bands} argument.
+every stored draw and one may retrieve (a) credible intervals via the
+\emph{conf_bands} argument, or (2) means via the \emph{type} argument.
 }
 \examples{
 \donttest{
-data <- matrix(rnorm(200), ncol = 2)
-x <- bvar(data, lags = 2)
+# Access a subset of the fred_qd dataset
+data <- fred_qd[, c("CPIAUCSL", "UNRATE", "FEDFUNDS")]
+# Transform it to be stationary
+data <- fred_transform(data, codes = c(5, 5, 1), lag = 4)
+
+# Estimate a BVAR using one lag, default settings and very few draws
+x <- bvar(data, lags = 1, n_draw = 1000L, n_burn = 200L, verbose = FALSE)
 
 # Get coefficent values at the 10\%, 50\% and 90\% quantiles
 coef(x, conf_bands = 0.10)
@@ -60,3 +60,5 @@ vcov(x, conf_bands = 0.5)
 \seealso{
 \code{\link{bvar}}; \code{\link{companion.bvar}}
 }
+\keyword{BVAR}
+\keyword{analysis}

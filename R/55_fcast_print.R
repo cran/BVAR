@@ -1,4 +1,3 @@
-#' @rdname bv_fcast
 #' @export
 print.bv_fcast <- function(x, ...) {
 
@@ -6,33 +5,33 @@ print.bv_fcast <- function(x, ...) {
 
   cat("Object with settings for computing forecasts.\n")
 
-  print_fcast(x, ...)
+  .print_fcast(x, ...)
 
   return(invisible(x))
 }
 
 
-#' @rdname predict.bvar
 #' @export
-print.bvar_fcast <- function(x, vars = NULL, ...) {
+print.bvar_fcast <- function(x, ...) {
 
   if(!inherits(x, "bvar_fcast")) {stop("Please provide a `bvar_fcast` object.")}
 
   cat("Forecast object from `bvar()`.\n")
 
-  print_fcast(x$setup, ...)
+  .print_fcast(x[["setup"]], ...)
 
   cat("Variables: ", dim(x[["fcast"]])[3], "\n",
-      "Iterations: ", dim(x[["fcast"]])[1], "\n", sep = "")
+    "Iterations: ", dim(x[["fcast"]])[1], "\n", sep = "")
 
   return(invisible(x))
 }
 
 
 #' @noRd
-print_fcast <- function(x, ...) {
+.print_fcast <- function(x, ...) {
 
-  cat("Horizon: ", x[["horizon"]], "\n", sep = "")
+  cat("Horizon: ", x[["horizon"]], "\n",
+    "Conditional: ", !is.null(x[["cond_path"]]), "\n", sep = "")
 
   return(invisible(x))
 }
@@ -40,7 +39,7 @@ print_fcast <- function(x, ...) {
 
 #' @rdname predict.bvar
 #' @export
-summary.bvar_fcast <- function(object, vars = NULL, digits = 2L, ...) {
+summary.bvar_fcast <- function(object, vars = NULL, ...) {
 
   if(!inherits(object, "bvar_fcast")) {
     stop("Please provide a `bvar_fcast` object.")
@@ -48,29 +47,20 @@ summary.bvar_fcast <- function(object, vars = NULL, digits = 2L, ...) {
 
   quants <- object[["quants"]]
   has_quants <- length(dim(quants)) == 3
-  M <- if(has_quants) {dim(quants)[3]} else {M <- dim(quants)[2]}
+  M <- if(has_quants) {dim(quants)[3]} else {dim(quants)[2]}
 
-  variables <- if(is.null(object[["variables"]])) {
-    1L:M
-  } else {object[["variables"]]}
-  pos <- get_var_set(vars, variables, M)
+  variables <- name_deps(variables = object[["variables"]], M = M)
+  pos <- pos_vars(vars, variables = variables, M = M)
 
-  out <- list(
-    "fcast" = object,
-    "quants" = quants,
-    "variables" = variables,
-    "pos" = pos,
-    "has_quants" = has_quants
-  )
-  class(out) <- "bvar_fcast_summary"
+  out <- structure(list(
+    "fcast" = object, "quants" = quants,
+    "variables" = variables, "pos" = pos, "has_quants" = has_quants),
+    class = "bvar_fcast_summary")
 
   return(out)
-
-  return(invisible(if(has_quants) {quants[, , pos]} else {quants[, pos]}))
 }
 
 
-#' @rdname predict.bvar
 #' @export
 print.bvar_fcast_summary <- function(x, digits = 2L, ...) {
 
@@ -78,14 +68,20 @@ print.bvar_fcast_summary <- function(x, digits = 2L, ...) {
     stop("Please provide a `bvar_fcast_summary` object.")
   }
 
-  print.bvar_fcast(x$fcast)
-    
-  cat(if(!x$has_quants) {"Median forecast:\n"} else {"Forecast:\n"})
+  print.bvar_fcast(x[["fcast"]])
 
-  for(i in x$pos) {
-    cat("\tVariable ", x$variables[i], ":\n", sep = "")
-    print(round(if(x$has_quants) {x$quants[, , i]} else {x$quants[, i]},
-                digits = digits))
+  if(!is.null(x[["fcast"]][["setup"]][["constr_mat"]])) {
+    cat("Constraints for conditional forecast:\n")
+    print(x[["fcast"]][["setup"]][["constr_mat"]])
+  }
+
+  cat(if(!x[["has_quants"]]) {"\nMedian forecast:\n"} else {"\nForecast:\n"})
+
+  for(i in x[["pos"]]) {
+    cat("\tVariable ", x[["variables"]][i], ":\n", sep = "")
+    print(round(
+      if(x[["has_quants"]]) {x[["quants"]][, , i]} else {x[["quants"]][, i]},
+      digits = digits))
   }
 
   return(invisible(x))

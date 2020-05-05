@@ -1,28 +1,26 @@
 #' Coefficient and VCOV methods for Bayesian VARs
 #'
-#' Retrieves coefficient / variance-covariance values for Bayesian VARs
+#' Retrieves coefficient / variance-covariance values from Bayesian VAR models
 #' generated with \code{\link{bvar}}. Note that coefficients are available for
-#' every stored draw and credible intervals may be set via the
-#' \emph{conf_bands} argument.
+#' every stored draw and one may retrieve (a) credible intervals via the
+#' \emph{conf_bands} argument, or (2) means via the \emph{type} argument.
 #'
 #' @param object A \code{bvar} object, obtained from \code{\link{bvar}}.
-#' @param conf_bands Numeric vector of desired confidence bands to apply.
+#' @param type Character scalar. Whether to return quantile or mean values.
+#' Note that \emph{conf_bands} is ignored for mean values.
+#' @param conf_bands Numeric vector of confidence bands to apply.
 #' E.g. for bands at 5\%, 10\%, 90\% and 95\% set this to \code{c(0.05, 0.1)}.
-#' Note that the median, i.e. \code{0.5} is always included.
+#' Note that the median, i.e. 0.5 is always included.
 #' @param companion Logical scalar. Whether to retrieve the companion matrix of
 #' coefficients. See \code{\link{companion.bvar}}.
-#'
-#' @param x Object of class \code{bvar_coefs} or \code{bvar_vcovs}.
-#' @param digits Integer scalar. Fed to \code{\link[base]{round}} and applied
-#' to numeric outputs (i.e. the quantiles).
-#' @param complete Logical scalar. Whether to print only medians or all
-#' available confidence bands.
 #' @param ... Not used.
 #'
-#' @return Returns a numeric array of class \code{bvar_coefs} /
-#' \code{bvar_vcovs} with desired values at the specified confidence bands.
+#' @return Returns a numeric array of class \code{bvar_coefs} or
+#' \code{bvar_vcovs} at the specified values.
 #'
 #' @seealso \code{\link{bvar}}; \code{\link{companion.bvar}}
+#'
+#' @keywords BVAR analysis
 #'
 #' @export
 #'
@@ -30,8 +28,13 @@
 #'
 #' @examples
 #' \donttest{
-#' data <- matrix(rnorm(200), ncol = 2)
-#' x <- bvar(data, lags = 2)
+#' # Access a subset of the fred_qd dataset
+#' data <- fred_qd[, c("CPIAUCSL", "UNRATE", "FEDFUNDS")]
+#' # Transform it to be stationary
+#' data <- fred_transform(data, codes = c(5, 5, 1), lag = 4)
+#'
+#' # Estimate a BVAR using one lag, default settings and very few draws
+#' x <- bvar(data, lags = 1, n_draw = 1000L, n_burn = 200L, verbose = FALSE)
 #'
 #' # Get coefficent values at the 10%, 50% and 90% quantiles
 #' coef(x, conf_bands = 0.10)
@@ -40,28 +43,34 @@
 #' vcov(x, conf_bands = 0.5)
 #' }
 coef.bvar <- function(
-  object, conf_bands = 0.5,
+  object, type = c("quantile", "mean"), conf_bands = 0.5,
   companion = FALSE, ...) {
 
   if(!inherits(object, "bvar")) {stop("Please provide a `bvar` object.")}
 
-  if(companion) {return(companion.bvar(object, conf_bands, ...))}
+  type <- match.arg(type)
 
-  quantiles <- quantile_check(conf_bands)
-  coefs <- apply(object[["beta"]], c(2, 3), quantile, quantiles)
+  if(companion) {return(companion.bvar(object, type, conf_bands, ...))}
+
+  if(type == "quantile") {
+    quantiles <- quantile_check(conf_bands)
+    coefs <- apply(object[["beta"]], c(2, 3), quantile, quantiles)
+  } else {
+    quantiles <- 0.5
+    coefs <- apply(object[["beta"]], c(2, 3), mean)
+  }
 
   M <- object[["meta"]][["M"]]
   lags <- object[["meta"]][["lags"]]
-  vars <- object[["variables"]]
-  if(is.null(vars)) {vars <- paste0("var", 1:M)}
+  vars <- name_deps(object[["variables"]], M = M)
+  vars_expl <- name_expl(vars, M = M, lags = lags)
 
-  vars_row <- c("const", paste0(rep(vars, lags), "-lag", rep(1:lags, each = M)))
   if(length(quantiles) == 1) {
     dimnames(coefs)[[2]] <- vars
-    dimnames(coefs)[[1]] <- vars_row
+    dimnames(coefs)[[1]] <- vars_expl
   } else {
     dimnames(coefs)[[3]] <- vars
-    dimnames(coefs)[[2]] <- vars_row
+    dimnames(coefs)[[2]] <- vars_expl
   }
 
   class(coefs) <- append("bvar_coefs", class(coefs))
@@ -72,18 +81,22 @@ coef.bvar <- function(
 
 #' @rdname coef.bvar
 #' @export
-vcov.bvar <- function(object, conf_bands = 0.5, ...) {
+vcov.bvar <- function(
+  object, type = c("quantile", "mean"), conf_bands = 0.5, ...) {
 
   if(!inherits(object, "bvar")) {stop("Please provide a `bvar` object.")}
 
-  quantiles <- quantile_check(conf_bands)
-  vcovs <- apply(object[["sigma"]], c(2, 3), quantile, quantiles)
+  type <- match.arg(type)
 
-  vars <- object[["variables"]]
-  if(is.null(vars)) {
-    M <- object[["meta"]][["M"]]
-    vars <- paste0("var", 1:M)
+  if(type == "quantile") {
+    quantiles <- quantile_check(conf_bands)
+    vcovs <- apply(object[["sigma"]], c(2, 3), quantile, quantiles)
+  } else {
+    quantiles <- 0.5
+    vcovs <- apply(object[["sigma"]], c(2, 3), mean)
   }
+
+  vars <- name_deps(object[["variables"]], M = object[["meta"]][["M"]])
 
   if(length(quantiles) == 1) {
     dimnames(vcovs)[[1]] <- dimnames(vcovs)[[2]] <- vars
@@ -97,25 +110,23 @@ vcov.bvar <- function(object, conf_bands = 0.5, ...) {
 }
 
 
-#' @rdname coef.bvar
 #' @export
 print.bvar_coefs <- function(x, digits = 3L, complete = FALSE, ...) {
 
   if(!inherits(x, "bvar_coefs")) {stop("Please provide a `bvar_coefs` object.")}
 
-  print_coefs(x, digits, type = "coefficient", complete = complete, ...)
+  .print_coefs(x, digits, type = "coefficient", complete = complete, ...)
 
   return(invisible(x))
 }
 
 
-#' @rdname coef.bvar
 #' @export
 print.bvar_vcovs <- function(x, digits = 3L, complete = FALSE, ...) {
 
   if(!inherits(x, "bvar_vcovs")) {stop("Please provide a `bvar_vcovs` object.")}
 
-  print_coefs(x, digits, type = "variance-covariance", complete = complete, ...)
+  .print_coefs(x, digits, type = "variance-covariance", complete = complete, ...)
 
   return(invisible(x))
 }
@@ -129,11 +140,12 @@ print.bvar_vcovs <- function(x, digits = 3L, complete = FALSE, ...) {
 #' numeric outputs (i.e. the quantiles).
 #' @param type String indicating whether \emph{x} contains coefficient,
 #' variance-covariance or forecast-error-variance decomposition values.
+#' @param complete Logical scalar. Whether to print every contained quantile.
 #'
 #' @noRd
-print_coefs <- function(
+.print_coefs <- function(
   x, digits = 3L,
-  type = c("coefficient", "variance-covariance", "FEVD"),
+  type = c("coefficient", "variance-covariance", "FEVD", "companion"),
   complete = FALSE,
   ...) {
 
@@ -147,10 +159,10 @@ print_coefs <- function(
   } else {coefs <- x[]} # Remove class to avoid recursion
 
   cat("Numeric array (dimensions ", paste0(dim(x), collapse = ", "),  ")",
-      " of ", type, " values from a BVAR.\n", sep = "")
+    " of ", type, " values from a BVAR.\n", sep = "")
   if(has_quants) {
     cat("Computed confidence bands: ",
-        paste(bands, collapse = ", "), "\n", sep = "")
+      paste(bands, collapse = ", "), "\n", sep = "")
   }
   if(complete && has_quants) {
     cat("Values:\n")
@@ -159,7 +171,7 @@ print_coefs <- function(
       print(round(x[band, , ], digits = digits))
     }
   } else {
-    cat("Median values:\n")
+    cat("Average values:\n")
     print(round(coefs, digits = digits))
   }
 

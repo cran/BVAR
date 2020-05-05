@@ -1,3 +1,42 @@
+# v1.0.0, CRAN Update 5 / JSS Revision 2
+
+- Add fancy **vignette** with background and demonstrations
+- Add new features
+  - New **FRED-MD** database and updated FRED-QD (`data("fred_md")`)
+  - Transformation helper functions (`fred_transform()`, `fred_code()`)
+  - Add **Conditional forecasting** (see `?bv_fcast()`)
+  - New replacement functions for `irf()` and `predict()` (`irf(x) <- irf(x)`)
+  - Provide wrapper for parallelised execution (`par_bvar()`)
+- Improve existing features
+  - Enhance IRF and forecast plotting
+    - `area` argument adds polygons for credible intervals
+    - `t_back` allows adding realised values before forecasts
+    - `col` and `fill` arguments allow changing colours
+    - transparence is applied to sequential lines / polygons
+    - Improved x-axis labelling
+  - Regex may be used for `vars`, `vars_response`, and `vars_impulse`
+  - New `type` for `coef()`, `fitted()`, etc, to retrieve means / quantiles
+  - Add constructors for the prior mean `b` argument in `bv_mn()`
+  - Auto `psi` now allows for one order of integration
+- **Enhance speed** considerably (~2-10 times faster)
+  - Move IRF and forecasts out of MCMC
+  - Capitalise upon matrix properties
+  - Cached and customised multivariate normal drawing
+  - Optimised FEVD computation
+- Fix bugs
+  - IRF calculation is now ordered properly (please recalculate)
+  - *coda* methods are now proper methods (potential issue on Windows)
+  - Vectorised `scale_hess` now works properly
+- Remove deprecated functions and arguments
+- Work on documentation and examples
+- Update citation information
+- Improve upon internal structure
+  - Unit tests with *tinytest* for development (skipped on CRAN)
+  - Outsource additional steps to dedicated functions
+  - More robustness checks and add verbosity to errors
+- Tested extensively on R 4.0.0 and R 3.6.3.
+
+
 # v0.2.2, CRAN Update 4 / Impulse Response Hotfix
 
 - Fix impulse response calculation (stray transpose of coefficients)
@@ -13,9 +52,9 @@
 # v0.2.1, CRAN Update 3 / FRED-QD ODC-BY 1.0
 
 - Clarify exact ToU of the FRED-QD dataset with St. Louis Fed
-- Comply with the new modified ODC-BY 1.0 for FRED-QD
-  - Mention and add license to LICENSE file (linked in DESCRIPTION)
-  - Add copyrighted series for which we have permission to use
+  - Comply with the new modified **ODC-BY 1.0** for FRED-QD
+  - Mention and add license to *LICENSE* file (linked in *DESCRIPTION*)
+  - Add the copyrighted series we are allowed to use
   - Mention updates and license in the data documentation
 - Fix and improve documentation
 
@@ -36,7 +75,7 @@
 - Add *coda* to suggestions for convergence assessment etc.
 - Add files *LICENSE*, *CITATION* and *NEWS.md*
 - Improve examples for further test coverage
-  - `R CMD check --run-donttest`: One warning (deprecated functions)
+- `R CMD check --run-donttest`: One warning (deprecated functions)
 
 
 # v0.1.6, Internal Release 1
@@ -77,10 +116,6 @@
 - Try to clarify licensing terms with the Federal Reserve
   - Some copyrighted series may have to be removed
   - Subset the dataset to only include variables in public domain for now
-
-
-# v0.1.4, JSS Submission
-
 - Fix addition of prior pdfs to ML
   - `alpha` needs an sd parameter
   - `psi` now needs proper shape and scale parameters
@@ -91,17 +126,11 @@
 - Further split up calculation of marginal likelihood
 
 
-# v0.1.3, CRAN Submission 2
+# v0.1.3, CRAN Submission
 
 - Update DESCRIPTION with linked DOI
 - Change `\dontrun{}` examples to `\donttest{}`
-- Improve examples for plotting and printing
 - Fix bounds in `plot_hyper()`
-- `R CMD check --as-cran`: No errors or warnings, one note (New submission)
-
-
-# v0.1.3, CRAN Submission 1
-
 - Update references with links via DOI
-- Add examples to `print` and `plot` methods
+- Add and improve examples for `print` and `plot` methods
 - `R CMD check --as-cran`: No errors or warnings, one note (New submission)

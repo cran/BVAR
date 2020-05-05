@@ -1,10 +1,11 @@
 #' BVAR posterior draws
 #'
-#' Draw \eqn{\beta} and \eqn{\sigma} from the posterior of a Bayesian VAR.
+#' Draw \eqn{\beta} and \eqn{\sigma} from the posterior.
 #'
-#' @param X Numeric matrix. Possibly extended with dummy priors.
-#' @param N Integer scalar. Rows of \emph{X}.
-#' @param M Integer scalar. Columns of \emph{X}.
+#' @param XX Numeric matrix. Crossproduct of a possibly extended \emph{X}.
+#' @param N Integer scalar. Rows of \emph{X}. Note that \emph{X} may have been
+#' extended with dummy observations.
+#' @param M Integer scalar. Columns of \emph{Y}.
 #' @param lags Integer scalar. Number of lags in the model.
 #' @param b Numeric marix. Minnesota prior's mean.
 #' @param psi Numeric matrix. Scale of the IW prior on the residual covariance.
@@ -12,37 +13,34 @@
 #' @param beta_hat Numeric matrix.
 #' @param omega_inv Numeric matrix.
 #'
-#' @return Returns a list with the following elements:
-#' \itemize{
-#'   \item \code{beta_draw}, \code{sigma_draw} - Draws from the posterior.
-#'   \item \code{sigma_chol} - The lower part of a Cholesky decomposition
-#'   of sigma_draw. Calculated as \code{t(chol(sigma_draw))}.
-#' }
+#' @return Returns a list with the following posterior draws of \emph{beta} and
+#' \emph{sigma}.
 #'
 #' @importFrom mvtnorm rmvnorm
 #'
 #' @noRd
 draw_post <- function(
-  X, N = nrow(X), M = ncol(X), lags,
+  XX, N, M, lags,
   b, psi, sse, beta_hat, omega_inv) {
 
-  S_post <- psi + sse + t(beta_hat - b) %*% omega_inv %*% (beta_hat - b)
-  S_eig <- eigen(S_post)
-  S_inv <- S_eig[["vectors"]] %*%
-    diag(1 / abs(S_eig[["values"]])) %*% t(S_eig[["vectors"]])
+  S_post <- psi + sse + crossprod((beta_hat - b), omega_inv) %*% (beta_hat - b)
+  # S_eig <- eigen(S_post, symmetric = TRUE)
+  # S_inv <- S_eig[["vectors"]] %*%
+  #   tcrossprod(diag(1 / abs(S_eig[["values"]])), S_eig[["vectors"]])
+  # eta <- rmvnorm(n = (N + M + 2), mean = rep(0, M), sigma = S_inv)
+  eta <- rmvn_inv(n = (N + M + 2), sigma_inv = S_post, method = "eigen")
 
-  # eta <- mvrnorm(n = (N + M + 2), mu = rep(0, M), Sigma = S_inv)
-  eta <- rmvnorm(n = (N + M + 2), mean = rep(0, M), sigma = S_inv)
-  sigma_draw <- solve(crossprod(eta)) %*% diag(M)
-  sigma_chol <- t(chol(sigma_draw))
-  beta_draw <- beta_hat +
-    # t(mvrnorm(n = M, mu = rep(0, (1 + M * lags)),
-    #           Sigma = solve(crossprod(X) + omega_inv) %*% diag(1 + M * lags))) %*%
-    t(rmvnorm(n = M, mean = rep(0, (1 + M * lags)),
-              sigma = solve(crossprod(X) + omega_inv) %*% diag(1 + M * lags))) %*%
-    sigma_chol
+  # sigma_draw <- chol2inv(chol(crossprod(eta)))
+  # sigma_chol <- t(chol(sigma_draw))
+  chol_de <- chol(crossprod(eta))
+  sigma_chol <- forwardsolve(t(chol_de), diag(nrow(chol_de)))
+  sigma_draw <- crossprod(sigma_chol)
 
-  return(list("beta_draw" = beta_draw,
-              "sigma_draw" = sigma_draw,
-              "sigma_chol" = sigma_chol))
+  # noise <- rmvnorm(n = M, mean = rep(0, (1 + M * lags)),
+  #   sigma = chol2inv(chol(XX + omega_inv)))
+  noise <- rmvn_inv(n = M, sigma_inv = XX + omega_inv, method = "chol")
+
+  beta_draw <- beta_hat + crossprod(noise, sigma_chol)
+
+  return(list("beta_draw" = beta_draw, "sigma_draw" = sigma_draw))
 }

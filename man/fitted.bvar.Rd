@@ -4,59 +4,68 @@
 \alias{fitted.bvar}
 \alias{residuals.bvar}
 \alias{plot.bvar_resid}
-\alias{print.bvar_fitted}
-\alias{print.bvar_resid}
 \title{Fitted and residual methods for Bayesian VARs}
 \usage{
-\method{fitted}{bvar}(object, conf_bands = 0.5, ...)
+\method{fitted}{bvar}(object, type = c("quantile", "mean"), conf_bands = 0.5, ...)
 
-\method{residuals}{bvar}(object, conf_bands = 0.5, ...)
+\method{residuals}{bvar}(object, type = c("quantile", "mean"), conf_bands = 0.5, ...)
 
 \method{plot}{bvar_resid}(x, vars = NULL, mar = c(2, 2, 2, 0.5), ...)
-
-\method{print}{bvar_fitted}(x, digits = 2L, ...)
-
-\method{print}{bvar_resid}(x, digits = 2L, ...)
 }
 \arguments{
 \item{object}{A \code{bvar} object, obtained from \code{\link{bvar}}.}
 
-\item{conf_bands}{Numeric vector of desired confidence bands to apply.
-E.g. for bands at 5\%, 10\%, 90\% and 95\% set this to \code{c(0.05, 0.1)}.
-Note that the median, i.e. \code{0.5} is always included.}
+\item{type}{Character scalar. Whether to return quantile or mean values.
+Note that \emph{conf_bands} is ignored for mean values.}
 
-\item{...}{Graphical parameters for \code{\link[graphics]{par}}.}
+\item{conf_bands}{Numeric vector of confidence bands to apply.
+E.g. for bands at 5\%, 10\%, 90\% and 95\% set this to \code{c(0.05, 0.1)}.
+Note that the median, i.e. 0.5 is always included.}
+
+\item{...}{Not used.}
 
 \item{x}{Object of class \code{bvar_fitted} / \code{bvar_resid}.}
 
-\item{vars}{Optional numeric vector. Used to subset the plot to certain
-variables by position. Defaults to \code{NULL}, i.e. all variables.}
+\item{vars}{Character vector used to select variables. Elements are matched
+to hyperparameters or coefficients. Coefficients may be matched based on
+the dependent variable (by providing the name or position) or the
+explanatory variables (by providing the name and the desired lag). See the
+example section for a demonstration. Defaults to \code{NULL}, i.e. all
+hyperparameters.}
 
 \item{mar}{Numeric vector. Margins for \code{\link[graphics]{par}}.}
-
-\item{digits}{Integer scalar. Fed to \code{\link[base]{round}} and applied to
-numeric outputs (i.e. the quantiles).}
 }
 \value{
-Returns a numeric array of class \code{bvar_fitted} /
-\code{bvar_resid} with desired values at the specified confidence bands.
+Returns a numeric array of class \code{bvar_fitted} or
+\code{bvar_resid} at the specified values.
 }
 \description{
-Calculates fitted values / residuals for Bayesian VARs generated with
+Calculates fitted or residual values for Bayesian VAR models generated with
 \code{\link{bvar}}.
 }
 \examples{
 \donttest{
-data <- matrix(rnorm(200), ncol = 2)
-x <- bvar(data, lags = 2)
+# Access a subset of the fred_qd dataset
+data <- fred_qd[, c("CPIAUCSL", "UNRATE", "FEDFUNDS")]
+# Transform it to be stationary
+data <- fred_transform(data, codes = c(5, 5, 1), lag = 4)
+
+# Estimate a BVAR using one lag, default settings and very few draws
+x <- bvar(data, lags = 1, n_draw = 1000L, n_burn = 200L, verbose = FALSE)
 
 # Get fitted values and adjust confidence bands to 10\%, 50\% and 90\%
 fitted(x, conf_bands = 0.10)
 
-# Get residuals
-residuals(x)
+# Get the residuals of variable 1
+resid(x, vars = 1)
+}
+\dontrun{
+# Get residuals and plot them
+plot(residuals(x))
 }
 }
 \seealso{
 \code{\link{bvar}}
 }
+\keyword{BVAR}
+\keyword{analysis}

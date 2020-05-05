@@ -13,13 +13,19 @@ bv_soc(mode = 1, sd = 1, min = 0.0001, max = 50)
 bv_sur(mode = 1, sd = 1, min = 0.0001, max = 50)
 }
 \arguments{
-\item{mode}{Numeric scalar (/vector). Mode (or the like) of the parameter.}
+\item{mode}{Numeric scalar. Mode / standard deviation of the
+parameter. Note that the \emph{mode} of \emph{psi} is set automatically by
+default, and would need to be provided as vector.}
 
-\item{sd}{Numeric scalar with the standard deviation.}
+\item{sd}{Numeric scalar. Mode / standard deviation of the
+parameter. Note that the \emph{mode} of \emph{psi} is set automatically by
+default, and would need to be provided as vector.}
 
-\item{min}{Numeric scalar (/vector). Minimum allowed value.}
+\item{min}{Numeric scalar. Minimum / maximum allowed value. Note that
+for \emph{psi} these are set automatically or need to provided as vectors.}
 
-\item{max}{Numeric scalar (/vector). Maximum allowed value.}
+\item{max}{Numeric scalar. Minimum / maximum allowed value. Note that
+for \emph{psi} these are set automatically or need to provided as vectors.}
 
 \item{fun}{Function taking \emph{Y}, \emph{lags} and the prior's parameter
 \emph{par} to generate and return a named list with elements \emph{X} and
@@ -36,18 +42,26 @@ See the Details section for information on common dummy priors.
 \details{
 Dummy priors are often used to "reduce the importance of the deterministic
 component implied by VARs estimated conditioning on the initial
-observations" (Giannone et al. 2015, p. 440). One such prior is the
-sum-of-coefficients (SOC) prior, which imposes the notion that a no-change
-forecast is optimal at the beginning of a time series. Its key parameter
-\eqn{\mu} controls the tightness - i.e. for low values the model is pulled
-towards a form with as many unit roots as variables and no cointegration.
+observations" (Giannone et al., 2015, p. 440).
+One such prior is the sum-of-coefficients (SOC) prior, which imposes the
+notion that a no-change forecast is optimal at the beginning of a time
+series. Its key parameter \eqn{\mu}{mu} controls the tightness - i.e. for
+low values the model is pulled towards a form with as many unit roots as
+variables and no cointegration.
 Another such prior is the single-unit-root (SUR) prior, that allows for
 cointegration relationships in the data. It pushes variables either towards
 their unconditional mean or towards the presence of at least one unit root.
 These priors are implemented via Theil mixed estimation, i.e. by adding
-dummy-observations on top of the data matrix. They are readily available
-via the shorthand functions \code{\link{bv_soc}} and \code{\link{bv_sur}}.
+dummy-observations on top of the data matrix. They are available via the
+functions \code{\link{bv_soc}} and \code{\link{bv_sur}}.
 }
+\section{Functions}{
+\itemize{
+\item \code{bv_soc}: Sum-of-coefficients dummy prior
+
+\item \code{bv_sur}: Single-unit-root dummy prior
+}}
+
 \examples{
 # Create a sum-of-coefficients prior
 add_soc <- function(Y, lags, par) {
@@ -74,11 +88,13 @@ add_sur <- function(Y, lags, par) {
 
 sur <- bv_dummy(mode = 1, sd = 1, min = 0.0001, max = 50, fun = add_sur)
 
-# Adding them to the prior list with `bv_priors()`
-priors_dum <- bv_priors(hyper = "auto", soc = soc, sur = sur)
+# Add the new custom dummy priors
+bv_priors(hyper = "auto", soc = soc, sur = sur)
 }
 \references{
-Giannone, D., Lenza, M., & Primiceri, G. E. (2015). Prior Selection for Vector Autoregressions. Review of Economics and Statistics, 97, 436-451. \url{https://doi.org/10.1162/REST_a_00483}.
+Giannone, D. and Lenza, M. and Primiceri, G. E. (2015) Prior Selection for
+  Vector Autoregressions. \emph{The Review of Economics and Statistics},
+  \bold{97:2}, 436-451, \url{https://doi.org/10.1162/REST_a_00483}.
 }
 \seealso{
 \code{\link{bv_priors}}; \code{\link{bv_minnesota}}

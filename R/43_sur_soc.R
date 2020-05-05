@@ -1,5 +1,7 @@
 #' Sum-of-coefficients and single-unit-root prior creation functions
 #'
+#' @param Y Numeric matrix. Data to base the dummy observations on.
+#' @param lags Integer scalar. Lag order of the model.
 #' @param par Numeric scalar. Parameter value of the prior.
 #'
 #' @return Returns a list with \emph{Y} and \emph{X} extended with the
@@ -16,6 +18,7 @@
 }
 
 
+#' @rdname .add_soc
 #' @noRd
 .add_sur <- function(Y, lags, par) {
   sur <- if(lags == 1) {Y[1, ] / par} else {
@@ -27,20 +30,17 @@
 }
 
 
-#' Sum-of-coefficients dummy prior
-#'
 #' @export
-#' @rdname bv_dummy
+#' @describeIn bv_dummy Sum-of-coefficients dummy prior
 bv_soc <- function(mode = 1, sd = 1, min = 0.0001, max = 50) {
 
-  bv_dummy(mode, sd, min, max, fun = .add_soc)
+  bv_dummy(mode = mode, sd = sd, min = min, max = max, fun = .add_soc)
 }
 
-#' Single-unit-root dummy prior
-#'
+
 #' @export
-#' @rdname bv_dummy
+#' @describeIn bv_dummy Single-unit-root dummy prior
 bv_sur <- function(mode = 1, sd = 1, min = 0.0001, max = 50) {
 
-  bv_dummy(mode, sd, min, max, fun = .add_sur)
+  bv_dummy(mode = mode, sd = sd, min = min, max = max, fun = .add_sur)
 }

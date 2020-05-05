@@ -1,25 +1,19 @@
 #' Fitted and residual methods for Bayesian VARs
 #'
-#' Calculates fitted values / residuals for Bayesian VARs generated with
+#' Calculates fitted or residual values for Bayesian VAR models generated with
 #' \code{\link{bvar}}.
 #'
 #' @param object A \code{bvar} object, obtained from \code{\link{bvar}}.
-#' @param conf_bands Numeric vector of desired confidence bands to apply.
-#' E.g. for bands at 5\%, 10\%, 90\% and 95\% set this to \code{c(0.05, 0.1)}.
-#' Note that the median, i.e. \code{0.5} is always included.
-#'
 #' @param x Object of class \code{bvar_fitted} / \code{bvar_resid}.
-#' @param digits Integer scalar. Fed to \code{\link[base]{round}} and applied to
-#' numeric outputs (i.e. the quantiles).
-#' @param vars Optional numeric vector. Used to subset the plot to certain
-#' variables by position. Defaults to \code{NULL}, i.e. all variables.
-#' @param mar Numeric vector. Margins for \code{\link[graphics]{par}}.
-#' @param ... Graphical parameters for \code{\link[graphics]{par}}.
+#' @inheritParams coef.bvar
+#' @inheritParams plot.bvar
 #'
-#' @return Returns a numeric array of class \code{bvar_fitted} /
-#' \code{bvar_resid} with desired values at the specified confidence bands.
+#' @return Returns a numeric array of class \code{bvar_fitted} or
+#' \code{bvar_resid} at the specified values.
 #'
 #' @seealso \code{\link{bvar}}
+#'
+#' @keywords BVAR analysis
 #'
 #' @export
 #'
@@ -27,28 +21,40 @@
 #'
 #' @examples
 #' \donttest{
-#' data <- matrix(rnorm(200), ncol = 2)
-#' x <- bvar(data, lags = 2)
+#' # Access a subset of the fred_qd dataset
+#' data <- fred_qd[, c("CPIAUCSL", "UNRATE", "FEDFUNDS")]
+#' # Transform it to be stationary
+#' data <- fred_transform(data, codes = c(5, 5, 1), lag = 4)
+#'
+#' # Estimate a BVAR using one lag, default settings and very few draws
+#' x <- bvar(data, lags = 1, n_draw = 1000L, n_burn = 200L, verbose = FALSE)
 #'
 #' # Get fitted values and adjust confidence bands to 10%, 50% and 90%
 #' fitted(x, conf_bands = 0.10)
 #'
-#' # Get residuals
-#' residuals(x)
+#' # Get the residuals of variable 1
+#' resid(x, vars = 1)
 #' }
-fitted.bvar <- function(object, conf_bands = 0.5, ...) {
+#' \dontrun{
+#' # Get residuals and plot them
+#' plot(residuals(x))
+#' }
+fitted.bvar <- function(
+  object, type = c("quantile", "mean"), conf_bands = 0.5, ...) {
 
   if(!inherits(object, "bvar")) {stop("Please provide a `bvar` object.")}
+
+  type <- match.arg(type)
 
   X <- object[["meta"]][["X"]]
   N <- object[["meta"]][["N"]]
   M <- object[["meta"]][["M"]]
-  betas <- coef(object, conf_bands)
+  betas <- coef(object, type, conf_bands)
 
   has_quants <- length(dim(betas)) == 3
   if(has_quants) {
     fit <- array(NA, c(dim(betas)[1], N, M),
-                 list(dimnames = dimnames(betas)[[1]], NULL, NULL))
+      dimnames = list(dimnames(betas)[[1]], NULL, dimnames(betas)[[3]]))
     for(i in seq_len(dim(betas)[1])) {
       fit[i, , ] <- X %*% betas[i, , ]
     }
@@ -63,11 +69,14 @@ fitted.bvar <- function(object, conf_bands = 0.5, ...) {
 
 #' @rdname fitted.bvar
 #' @export
-residuals.bvar <- function(object, conf_bands = 0.5, ...) {
+residuals.bvar <- function(
+  object, type = c("quantile", "mean"), conf_bands = 0.5, ...) {
 
   if(!inherits(object, "bvar")) {stop("Please provide a `bvar` object.")}
 
-  fit <- fitted.bvar(object, conf_bands = conf_bands)
+  type <- match.arg(type)
+
+  fit <- fitted.bvar(object, type = type, conf_bands = conf_bands)
 
   Y <- object[["meta"]][["Y"]]
 
@@ -95,11 +104,12 @@ plot.bvar_resid <- function(x, vars = NULL, mar = c(2, 2, 2, 0.5), ...) {
   has_quants <- length(dim(x)) == 3
   if(has_quants) {x <- x["50%", , ]}
   M <- dim(x)[2]
-  pos <- get_var_set(vars, 1:M, M)
+  variables <- name_deps(variables = dimnames(x)[[2]], M = M)
+  pos <- pos_vars(vars, variables, M)
 
   op <- par(mfrow = c(length(pos), 1), mar = mar, ...)
   for(i in pos) {
-    plot(x[, i], main = paste0("Variable #", i, "Residuals"))
+    plot(x[, i], main = paste("Residuals", variables[i]))
     abline(h = 0, lty = "dashed", col = "gray")
   }
   par(op)
@@ -108,11 +118,12 @@ plot.bvar_resid <- function(x, vars = NULL, mar = c(2, 2, 2, 0.5), ...) {
 }
 
 
-#' @rdname fitted.bvar
 #' @export
 print.bvar_fitted <- function(x, digits = 2L, ...) {
 
-  if(!inherits(x, "bvar_fitted")) {stop("Please provide a `bvar_fitted` object.")}
+  if(!inherits(x, "bvar_fitted")) {
+    stop("Please provide a `bvar_fitted` object.")
+  }
 
   print_fitted(x, digits, type = "fitted", ...)
 
@@ -120,11 +131,12 @@ print.bvar_fitted <- function(x, digits = 2L, ...) {
 }
 
 
-#' @rdname fitted.bvar
 #' @export
 print.bvar_resid <- function(x, digits = 2L, ...) {
 
-  if(!inherits(x, "bvar_resid")) {stop("Please provide a `bvar_resid` object.")}
+  if(!inherits(x, "bvar_resid")) {
+    stop("Please provide a `bvar_resid` object.")
+  }
 
   print_fitted(x, digits, type = "residual", ...)
 
@@ -150,29 +162,28 @@ print_fitted <- function(
 
   has_quants <- length(dim(x)) == 3
   if(has_quants) {
-    N <- dim(x)[2]
-    M <- dim(x)[3]
-    P <- dim(x)[1]
-    head <- x["50%", 1:3, ]
-    tail <- x["50%", (N - 2):N, ]
+    N <- dim(x)[2]; M <- dim(x)[3]; P <- dim(x)[1]
+    variables <- name_deps(variables = dimnames(x)[[3]], M = M)
+    top <- x["50%", 1:3, ]
+    bot <- x["50%", (N - 2):N, ]
   } else {
-    N <- dim(x)[1]
-    M <- dim(x)[2]
-    head <- x[1:3, ]
-    tail <- x[(N - 2):N, ]
+    N <- dim(x)[1]; M <- dim(x)[2]
+    variables <- name_deps(variables = dimnames(x)[[2]], M = M)
+    top <- x[1:3, ]
+    bot <- x[(N - 2):N, ]
   }
 
   cat("Numeric array (dimensions ", paste0(dim(x), collapse = ", "),  ")",
-      " with ", type, " values from a BVAR.\n", sep = "")
+    " with ", type, " values from a BVAR.\n", sep = "")
   if(has_quants) {
     cat("Computed confidence bands: ",
-        paste(dimnames(x)[[1]], collapse = ", "), "\n", sep = "")
+      paste(dimnames(x)[[1]], collapse = ", "), "\n", sep = "")
   }
-  cat("Median values:\n")
+  cat("Average values:\n")
   for(var in seq_len(M)) {
-    cat("\tVariable ", var, ": ",
-        paste0(round(head[, var], digits), collapse = ", "), ", [...], ",
-        paste0(round(tail[, var], digits), collapse = ", "), "\n", sep = "")
+    cat("\t", variables[var], ": ",
+      paste0(round(top[, var], digits), collapse = ", "), ", [...], ",
+      paste0(round(bot[, var], digits), collapse = ", "), "\n", sep = "")
   }
 
   return(invisible(x))

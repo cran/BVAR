@@ -1,7 +1,9 @@
 #' Log-Likelihood method for Bayesian VARs
 #'
-#' Calculates the log-likelihood of Bayesian VARs generated with
+#' Calculates the log-likelihood of Bayesian VAR models generated with
 #' \code{\link{bvar}}.
+#'
+#' @author Nikolas Kuschnig, Florian Huber
 #'
 #' @param object A \code{bvar} object, obtained from \code{\link{bvar}}.
 #' @param ... Other graphical parameters for \code{\link[graphics]{par}}.
@@ -10,32 +12,27 @@
 #'
 #' @seealso \code{\link{bvar}}
 #'
+#' @keywords BVAR analysis
+#'
 #' @export
 #'
 #' @importFrom mvtnorm dmvnorm
 #' @importFrom stats logLik
 #'
-#' @examples
-#' \donttest{
-#' data <- matrix(rnorm(200), ncol = 2)
-#' x <- bvar(data, lags = 2)
-#'
-#' # Get log-likelihood
-#' logLik(x)
-#' }
-logLik.bvar <- function(object, ...) {
+#' @noRd
+logLik.bvar <- function(object, ...) { # Todo: Add conf_bands
 
   Y <- object[["meta"]][["Y"]]
   N <- object[["meta"]][["N"]]
   K <- object[["meta"]][["K"]]
-  mean <- fitted(object)
-  sigma <- vcov(object, 0.5)[]
+  mean <- fitted(object, conf_bands = 0.5)
+  sigma <- vcov(object, conf_bands = 0.5)[]
 
   ll <- sum(vapply(seq_len(N), function(i) {
     dmvnorm(Y[i, ], mean[i, ], sigma, log = TRUE)
   }, numeric(1)))
 
-  attr(ll, "df") <- K
+  # attr(ll, "df") <- NA # Maybe provide effective DoF
   attr(ll, "nall") <- N
   class(ll) <- "logLik"
 

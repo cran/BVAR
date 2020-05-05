@@ -1,54 +1,81 @@
-#' Method for coda Markov chain Monte Carlo objects
+#' Methods for \pkg{coda} Markov chain Monte Carlo objects
 #'
-#' Method to convert chains of hyperparameters and marginal likelihoods obtained
-#' from \code{\link{bvar}} or coefficent values to objects compatible for
-#' further processing with \pkg{coda}, i.e., objects of class
-#' \code{\link[coda]{mcmc}} or \code{\link[coda]{mcmc.list}}.
-#' Multiple chains, that is comparable \code{bvar} objects may be converted
-#' using the \emph{chains} argument.
+#' Methods to convert parameter and/or coefficient draws from \code{\link{bvar}}
+#' to \pkg{coda}'s \code{\link[coda]{mcmc}} (or \code{\link[coda]{mcmc.list}})
+#' format for further processing.
+#'
+#' @name coda
 #'
 #' @param x A \code{bvar} object, obtained from \code{\link{bvar}}.
-#' @param vars Optional character vector used to subset the converted
-#' hyperparameters. The elements need to match the names of hyperparameters
-#' (plus \code{"ml"}). Defaults to \code{NULL}, i.e. all variables.
-#' @param vars_response,vars_impulse Optional integer vector with the
-#' positions of coefficient values to convert. \emph{vars_response} corresponds
-#' to a specific dependent variable, \emph{vars_impulse} to an independent one.
-#' Note that the constant is found at position one.
-#' @param chains List with additional \code{bvar} objects. If provided, contents
-#' are converted to an object of class \code{\link[coda]{mcmc.list}}.
-#' @param ... Other parameters for \code{\link[coda]{as.mcmc}} and
-#' \code{\link[coda]{as.mcmc.list}}.
+#' @param vars Character vector used to select variables. Elements are matched
+#' to hyperparameters or coefficients. Coefficients may be matched based on
+#' the dependent variable (by providing the name or position) or the
+#' explanatory variables (by providing the name and the desired lag). See the
+#' example section for a demonstration. Defaults to \code{NULL}, i.e. all
+#' hyperparameters.
+#' @param vars_response,vars_impulse Optional character or integer vectors used
+#' to select coefficents. Dependent variables are specified with
+#' \emph{vars_response}, explanatory ones with \emph{vars_impulse}. See the
+#' example section for a demonstration.
+#' @param chains List with additional \code{bvar} objects. If provided,
+#' an object of class \code{\link[coda]{mcmc.list}} is returned.
+#' @param ... Other parameters for \code{\link[coda]{as.mcmc}}.
 #'
-#' @seealso \code{\link{bvar}}; \code{\link[coda]{mcmc}}
+#' @return Returns a \pkg{coda} \code{\link[coda]{mcmc}} (or
+#' \code{\link[coda]{mcmc.list}}) object.
 #'
-#' @keywords VAR BVAR coda mcmc convergence
+#' @seealso \code{\link{bvar}}; \code{\link[coda]{mcmc}};
+#' \code{\link[coda]{mcmc.list}}
 #'
-#' @export
+#' @keywords BVAR coda MCMC analysis
 #'
 #' @examples
 #' \donttest{
 #' library("coda")
 #'
-#' data <- matrix(rnorm(200), ncol = 2)
-#' x <- bvar(data, lags = 2)
-#' y <- bvar(data, lags = 2)
+#' # Access a subset of the fred_qd dataset
+#' data <- fred_qd[, c("CPIAUCSL", "UNRATE", "FEDFUNDS")]
+#' # Transform it to be stationary
+#' data <- fred_transform(data, codes = c(5, 5, 1), lag = 4)
 #'
-#' # Convert hyperparameter lambda and the marginal likelihood
-#' as.mcmc(x, vars = c("ml", "lambda"))
+#' # Estimate two BVARs using one lag, default settings and very few draws
+#' x <- bvar(data, lags = 1, n_draw = 750L, n_burn = 250L, verbose = FALSE)
+#' y <- bvar(data, lags = 1, n_draw = 750L, n_burn = 250L, verbose = FALSE)
 #'
-#' # Add second chain for further processing
-#' as.mcmc(x, vars = c("ml", "lambda"), chains = list(y = y))
+#' # Convert the hyperparameter lambda
+#' as.mcmc(x, vars = c("lambda"))
+#'
+#' # Convert coefficients for the first dependent, use chains in method
+#' as.mcmc(structure(list(x, y), class = "bvar_chains"), vars = "CPIAUCSL")
+#'
+#' # Convert the coefs of variable three's first lag, use in the generic
+#' as.mcmc(x, vars = "FEDFUNDS-lag1", chains = y)
+#'
+#' # Convert hyperparameters and constant coefficient values for variable 1
+#' as.mcmc(x, vars = "lambda", "CPI", "constant")
+#'
+#' # Specify coefficent values to convert in alternative way
+#' as.mcmc(x, vars_impulse = c("FED", "CPI"), vars_response = "UNRATE")
 #' }
-as.mcmc.bvar <- function(
+NULL
+
+
+#' @rdname coda
+as.mcmc.bvar <- function( # Dynamic export (zzz.R)
   x,
   vars = NULL,
   vars_response = NULL, vars_impulse = NULL,
   chains = list(), ...) {
 
-  # Checks ------------------------------------------------------------------
+  # Checks ---
 
-  if(!inherits(x, "bvar")) {stop("Please provide a `bvar` object.")}
+  if(!inherits(x, "bvar")) {
+    if(inherits(x[[1]], "bvar")) { # Allow chains to x
+      chains <- x
+      x <- x[[1]]
+      chains[[1]] <- NULL
+    } else {stop("Please provide a `bvar` object.")}
+  }
 
   if(inherits(chains, "bvar")) {chains <- list(chains)}
   lapply(chains, function(z) {if(!inherits(z, "bvar")) {
@@ -58,28 +85,28 @@ as.mcmc.bvar <- function(
   has_coda()
 
 
-  # Get data and transform --------------------------------------------------
+  # Get data and transform ---
 
-  prep <- prep_data(x, vars, vars_response, vars_impulse,
-                    chains, check_chains = TRUE, n_saves = TRUE)
-  data <- prep[["data"]]
-  vars <- prep[["vars"]]
+  prep <- prep_data(x,
+    vars = vars, vars_response = vars_response, vars_impulse = vars_impulse,
+    chains = chains, check_chains = TRUE, Ms = TRUE, n_saves = TRUE)
   chains <- prep[["chains"]]
 
   if(!is.null(chains) && length(chains) > 0) {
-    chains[["x"]] <- data
+    chains[["x"]] <- prep[["data"]]
     out <- coda::mcmc.list(... = lapply(chains, coda::as.mcmc, ...))
   } else {
-    out <- coda::as.mcmc(data, ...)
+    out <- coda::as.mcmc(prep[["data"]], ...)
   }
 
   return(out)
 }
 
 
+#' @rdname coda
+as.mcmc.bvar_chains <- as.mcmc.bvar # Dynamic export (zzz.R)
+
+
 #' @noRd
-has_coda <- function() {
-  if(!requireNamespace("coda", quietly = TRUE)) {
-    stop("Package \'coda\' required for this method.", call. = FALSE)
-  }
-}
+has_coda <- function() {has_package("coda")}
+
