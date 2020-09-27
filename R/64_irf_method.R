@@ -1,3 +1,4 @@
+
 #' Impulse response and forecast error methods for Bayesian VARs
 #'
 #' Retrieves / calculates impulse response functions (IRFs) and/or forecast
@@ -56,6 +57,9 @@
 #' # Recalculate with sign restrictions provided via the ellipsis
 #' irf(x, sign_restr = matrix(c(1, NA, NA, -1, 1, -1, -1, 1, 1), nrow = 3))
 #'
+#' # Recalculate with zero and sign restrictions provided via the ellipsis
+#' irf(x, sign_restr = matrix(c(1, 0, 1, NA, 1, 1, -1, -1, 1), nrow = 3))
+#'
 #' # Calculate the forecast error variance decomposition
 #' fevd(x)
 #'
@@ -66,8 +70,6 @@
 #' summary(x, vars_response = 2L)
 #' }
 irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
-
-  if(!inherits(x, "bvar")) {stop("Please provide a `bvar` object.")}
 
   dots <- list(...)
   irf_store <- x[["irf"]]
@@ -100,6 +102,10 @@ irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
     if(!is.null(irf[["sign_restr"]]) && length(irf[["sign_restr"]]) != M ^ 2) {
       stop("Dimensions of provided sign restrictions do not fit the data.")
     }
+    if(!is.null(irf[["zero_restr"]]) && length(irf[["zero_restr"]]) != M ^ 2) {
+      stop("Dimensions of provided zero and sign restrictions ",
+           "do not fit the data.")
+    }
 
     # Sampling ---
 
@@ -118,7 +124,8 @@ irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
       irf_comp  <- compute_irf(
         beta_comp = beta_comp, sigma = sigma[j, , ], M = M, lags = lags,
         horizon = irf[["horizon"]], identification = irf[["identification"]],
-        sign_restr = irf[["sign_restr"]], sign_lim = irf[["sign_lim"]])
+        sign_restr = irf[["sign_restr"]], zero = irf[["zero"]],
+        sign_lim = irf[["sign_lim"]])
       irf_store[["irf"]][i, , , ] <- irf_comp
 
       if(irf[["fevd"]]) { # Forecast error variance decomposition
@@ -134,6 +141,16 @@ irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
       irf.bvar_irf(irf_store, conf_bands)
     } else {irf.bvar_irf(irf_store, c(0.16))}
   }
+
+  if(irf_store[["setup"]][["fevd"]]) {
+    if(is.null(irf_store[["fevd"]][["quants"]]) || !missing(conf_bands)) {
+      irf_store[["fevd"]] <- if(!missing(conf_bands)) {
+        fevd.bvar_irf(irf_store, conf_bands)
+      } else {fevd.bvar_irf(irf_store, c(0.16))}
+    }
+  }
+
+
 
   return(irf_store)
 }
@@ -160,8 +177,6 @@ irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
 #' @importFrom stats quantile
 irf.bvar_irf <- function(x, conf_bands, ...) {
 
-  if(!inherits(x, "bvar_irf")) {stop("Please provide a `bvar_irf` object.")}
-
   if(!missing(conf_bands)) {
     quantiles <- quantile_check(conf_bands)
     x[["quants"]] <- apply(x[["irf"]], c(2, 3, 4), quantile, quantiles)
@@ -174,8 +189,6 @@ irf.bvar_irf <- function(x, conf_bands, ...) {
 #' @rdname irf.bvar
 #' @export
 fevd.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
-
-  if(!inherits(x, "bvar")) {stop("Please provide a `bvar` object.")}
 
   dots <- list(...)
   irf_store <- x[["irf"]]
@@ -200,10 +213,17 @@ fevd.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
 #' @export
 fevd.bvar_irf <- function(x, conf_bands, ...) {
 
-  if(!inherits(x, "bvar_irf")) {stop("Please provide a `bvar_irf` object.")}
-
   if(is.null(x[["fevd"]])) {
-    stop("No forecast error variance decomposition found.")
+    x[["fevd"]] <- structure(list("fevd" = array(NA, dim(x[["irf"]])),
+      "variables" = x[["variables"]]), class = "bvar_fevd")
+    n_save <- dim(x[["irf"]])[1]
+    M <- dim(x[["irf"]])[2]
+    horizon <- dim(x[["irf"]])[3]
+    for(i in seq_len(n_save)) {
+      irf_comp <- x[["irf"]][i, , , ]
+      x[["fevd"]][["fevd"]][i, , , ] <- compute_fevd(irf_comp = irf_comp,
+        M = M, horizon = horizon)
+    }
   }
 
   fevd_store <- x[["fevd"]]
@@ -224,11 +244,15 @@ fevd.bvar_irf <- function(x, conf_bands, ...) {
 #' @importFrom stats quantile
 fevd.bvar_fevd <- function(x, conf_bands, ...) {
 
-  if(!inherits(x, "bvar_fevd")) {stop("Please provide a `bvar_fevd` object.")}
-
   if(!missing(conf_bands)) {
     quantiles <- quantile_check(conf_bands)
     x[["quants"]] <- apply(x[["fevd"]], c(2, 3, 4), quantile, quantiles)
+    # Make 'em sum to 1 (breaks with quantiles) and keep dimension ordering
+    apply_vec <- if(length(quantiles) > 1) {c(1, 2, 3)} else {c(1, 2)}
+    aperm_vec <- if(length(quantiles) > 1) {c(2, 3, 4, 1)} else {c(2, 3, 1)}
+    x[["quants"]] <- apply(x[["quants"]], apply_vec, function(x) {
+      x / sum(x)})
+    x[["quants"]] <- aperm(x[["quants"]], aperm_vec)
   }
 
   return(x)
@@ -260,22 +284,3 @@ fevd <- function(x, ...) {UseMethod("fevd", x)}
 fevd.default <- function(x, ...) {
   stop("No methods for class ", paste0(class(x), collapse = " / "), " found.")
 }
-
-
-# vars compatibility ------------------------------------------------------
-
-#' @noRd
-irf.varest <- irf.svarest <- irf.svecest <- irf.vec2var <- function(x, ...) {
-  has_vars()
-  vars::irf(x, ...)
-}
-
-#' @noRd
-fevd.varest <- fevd.svarest <-
-  fevd.svecest <- fevd.vec2var <- function(x, ...) {
-  has_vars()
-  vars::fevd(x, ...)
-}
-
-#' @noRd
-has_vars <- function() {has_package("vars")}

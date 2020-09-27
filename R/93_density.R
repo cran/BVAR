@@ -1,3 +1,4 @@
+
 #' Density methods for Bayesian VARs
 #'
 #' Calculates densities of hyperparameters or coefficient draws from Bayesian
@@ -55,9 +56,6 @@ density.bvar <- function(
   vars_response = NULL, vars_impulse = NULL,
   ...) {
 
-  if(!inherits(x, "bvar")) {stop("Please provide a `bvar` object.")}
-
-
   # Get data and apply density ---
 
   prep <- prep_data(x, vars = vars,
@@ -78,10 +76,6 @@ density.bvar <- function(
 #' @export
 print.bvar_density <- function(x, ...) {
 
-  if(!inherits(x, "bvar_density")) {
-    stop("Please provide a `bvar_density` object.")
-  }
-
   lapply(x, print, ...)
 
   return(invisible(x))
@@ -97,10 +91,6 @@ plot.bvar_density <- function(
   mar = c(2, 2, 2, 0.5),
   mfrow = c(length(x), 1),
   ...) {
-
-  if(!inherits(x, "bvar_density")) {
-    stop("Please provide a `bvar_density` object.")
-  }
 
   op <- par(mfrow = mfrow, mar = mar, ...)
 

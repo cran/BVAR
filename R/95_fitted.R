@@ -1,3 +1,4 @@
+
 #' Fitted and residual methods for Bayesian VARs
 #'
 #' Calculates fitted or residual values for Bayesian VAR models generated with
@@ -42,8 +43,6 @@
 fitted.bvar <- function(
   object, type = c("quantile", "mean"), conf_bands = 0.5, ...) {
 
-  if(!inherits(object, "bvar")) {stop("Please provide a `bvar` object.")}
-
   type <- match.arg(type)
 
   X <- object[["meta"]][["X"]]
@@ -72,8 +71,6 @@ fitted.bvar <- function(
 residuals.bvar <- function(
   object, type = c("quantile", "mean"), conf_bands = 0.5, ...) {
 
-  if(!inherits(object, "bvar")) {stop("Please provide a `bvar` object.")}
-
   type <- match.arg(type)
 
   fit <- fitted.bvar(object, type = type, conf_bands = conf_bands)
@@ -99,8 +96,6 @@ residuals.bvar <- function(
 #' @export
 plot.bvar_resid <- function(x, vars = NULL, mar = c(2, 2, 2, 0.5), ...) {
 
-  if(!inherits(x, "bvar_resid")) {stop("Please provide a `bvar_resid` object.")}
-
   has_quants <- length(dim(x)) == 3
   if(has_quants) {x <- x["50%", , ]}
   M <- dim(x)[2]
@@ -121,10 +116,6 @@ plot.bvar_resid <- function(x, vars = NULL, mar = c(2, 2, 2, 0.5), ...) {
 #' @export
 print.bvar_fitted <- function(x, digits = 2L, ...) {
 
-  if(!inherits(x, "bvar_fitted")) {
-    stop("Please provide a `bvar_fitted` object.")
-  }
-
   print_fitted(x, digits, type = "fitted", ...)
 
   return(invisible(x))
@@ -133,10 +124,6 @@ print.bvar_fitted <- function(x, digits = 2L, ...) {
 
 #' @export
 print.bvar_resid <- function(x, digits = 2L, ...) {
-
-  if(!inherits(x, "bvar_resid")) {
-    stop("Please provide a `bvar_resid` object.")
-  }
 
   print_fitted(x, digits, type = "residual", ...)
 
@@ -179,7 +166,7 @@ print_fitted <- function(
     cat("Computed confidence bands: ",
       paste(dimnames(x)[[1]], collapse = ", "), "\n", sep = "")
   }
-  cat("Average values:\n")
+  cat("Median values:\n")
   for(var in seq_len(M)) {
     cat("\t", variables[var], ": ",
       paste0(round(top[, var], digits), collapse = ", "), ", [...], ",

@@ -1,3 +1,4 @@
+
 #' Methods for \pkg{coda} Markov chain Monte Carlo objects
 #'
 #' Methods to convert parameter and/or coefficient draws from \code{\link{bvar}}
@@ -52,7 +53,7 @@
 #' as.mcmc(x, vars = "FEDFUNDS-lag1", chains = y)
 #'
 #' # Convert hyperparameters and constant coefficient values for variable 1
-#' as.mcmc(x, vars = "lambda", "CPI", "constant")
+#' as.mcmc(x, vars = c("lambda", "CPI", "constant"))
 #'
 #' # Specify coefficent values to convert in alternative way
 #' as.mcmc(x, vars_impulse = c("FED", "CPI"), vars_response = "UNRATE")
@@ -109,4 +110,3 @@ as.mcmc.bvar_chains <- as.mcmc.bvar # Dynamic export (zzz.R)
 
 #' @noRd
 has_coda <- function() {has_package("coda")}
-

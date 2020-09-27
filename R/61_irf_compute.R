@@ -17,12 +17,16 @@
 #' @param identification Logical scalar. Whether or not the shocks used for
 #' calculating the impulse should be identified. Defaults to \code{TRUE},
 #' meaning identification will be performed recursively through a
-#' Cholesky decomposition of the VCOV-matrix as long as \emph{sign_restr} is
-#' \code{NULL}. If set to \code{FALSE}, shocks will be unidentified.
-#' @param sign_restr Numeric matrix. Elements inform about expected impacts
-#' of certain shocks. Can be either 1, -1 or \code{NA} depending on
-#' whether a positive, negative, or no contemporaneous effect of a certain shock
-#' is expected.
+#' Cholesky decomposition of the VCOV-matrix as long as \emph{sign_restr}
+#' and \emph{zero_restr} are \code{NULL}. If set to \code{FALSE}, shocks will
+#' be unidentified.
+#' @param sign_restr  Numeric matrix. Elements inform about expected impacts
+#' of certain shocks. Can be either \eqn{1}, \eqn{-1} or \eqn{0} depending
+#' on whether a positive, a negative or no contemporaneous effect of a
+#' certain shock is expected. Elements set to \eqn{NA} indicate that there are
+#' no particular expectations for the contemporaneous effects.
+#' @param zero Logical scalar. Whether to impose zero and sign restrictions,
+#' following Arias et al. (2018).
 #' @param sign_lim Integer scalar. Maximum number of rotational matrices to
 #' draw and check for fitting sign restrictions.
 #'
@@ -35,17 +39,18 @@ compute_irf <- function(
   M, lags,
   horizon,
   identification,
-  sign_restr, sign_lim) {
+  sign_restr, zero = FALSE, sign_lim = 10000) {
 
   # Identification
-  shock <- if(identification) {
+  if(identification) {
+    sigma_chol <- t(chol(sigma))
     if(is.null(sign_restr)) {
-      sigma_chol <- t(chol(sigma))
+      shock <- sigma_chol
     } else {
-      sign_restr(sigma_chol = t(chol(sigma)), sign_restr = sign_restr,
-        M = M, sign_lim = sign_lim)
+      shock <- sign_restr(sigma_chol = sigma_chol,
+        sign_restr = sign_restr, M = M, sign_lim = sign_lim, zero = zero)
     }
-  } else {sigma}
+  } else {shock <- sigma}
 
   # Impulse responses
   irf_comp <- array(0, c(M * lags, horizon, M * lags))

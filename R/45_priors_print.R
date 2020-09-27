@@ -1,7 +1,6 @@
+
 #' @export
 print.bv_priors <- function(x, ...) {
-
-  if(!inherits(x, "bv_priors")) {stop("Please provide a `bv_priors` object.")}
 
   cat("Object with prior settings for `bvar()`.\n",
     "Hyperparameters: ", paste0(x[["hyper"]], collapse = ", "),
@@ -25,10 +24,6 @@ print.bv_priors <- function(x, ...) {
 #' @export
 print.bv_minnesota <- function(x, indent = FALSE, ...) {
 
-  if(!inherits(x, "bv_minnesota") && !inherits(x, "bv_priors")) {
-    stop("Please provide a `bv_minnesota` or `bv_priors` object.")
-  }
-
   cat("Minnesota prior:\nlambda:\n"); print(x[["lambda"]], indent = indent)
   cat("alpha:\n"); print(x[["alpha"]], indent = indent)
   cat("psi:\n"); print(x[["psi"]], indent = indent)
@@ -41,8 +36,6 @@ print.bv_minnesota <- function(x, indent = FALSE, ...) {
 #' @export
 print.bv_dummy <- function(x, indent = FALSE, ...) {
 
-  if(!inherits(x, "bv_dummy")) {stop("Please provide a `bv_dummy` object.")}
-
   print_priors(x, ...)
   cat(if(indent) {"\t"}, "Mode / Bounds: ",
     x[["mode"]], " / [", x[["min"]], ", ", x[["max"]], "]\n", sep = "")
@@ -53,8 +46,6 @@ print.bv_dummy <- function(x, indent = FALSE, ...) {
 
 #' @export
 print.bv_psi <- function(x, indent = FALSE, ...) {
-
-  if(!inherits(x, "bv_psi")) {stop("Please provide a `bv_psi` object.")}
 
   print_priors(x, ...)
   if(any(x[["mode"]] == "auto")) {

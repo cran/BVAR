@@ -1,3 +1,11 @@
+# v1.0.1, CRAN Update 6
+
+- Add identification via zero and sign restrictions
+- Update *CITATION* with the forthcoming JSS reference
+- Prepare for tidy outputs in *BVARverse*
+- Fix minor bugs and typos (internal checks, documentation, and vignette)
+
+
 # v1.0.0, CRAN Update 5 / JSS Revision 2
 
 - Add fancy **vignette** with background and demonstrations
@@ -34,7 +42,7 @@
   - Unit tests with *tinytest* for development (skipped on CRAN)
   - Outsource additional steps to dedicated functions
   - More robustness checks and add verbosity to errors
-- Tested extensively on R 4.0.0 and R 3.6.3.
+- Tested extensively on R 4.0.0 and R 3.6.3
 
 
 # v0.2.2, CRAN Update 4 / Impulse Response Hotfix

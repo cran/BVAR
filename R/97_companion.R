@@ -1,3 +1,4 @@
+
 #' Retrieve companion matrix from a Bayesian VAR
 #'
 #' Calculates the companion matrix for Bayesian VARs generated via
@@ -47,8 +48,6 @@ companion.bvar <- function(
   conf_bands = 0.5,
   ...) {
 
-  if(!inherits(object, "bvar")) {stop("Please provide a `bvar` object.")}
-
   type <- match.arg(type)
 
   K <- object[["meta"]][["K"]]
@@ -87,8 +86,6 @@ companion.bvar <- function(
 
 #' @export
 print.bvar_comp <- function(x, digits = 3L, complete = FALSE, ...) {
-
-  if(!inherits(x, "bvar_comp")) {stop("Please provide a `bvar_comp` object.")}
 
   .print_coefs(x, digits, type = "companion", complete = complete, ...)
 

@@ -1,7 +1,6 @@
+
 #' @export
 print.bvar <- function(x, ...) {
-
-  if(!inherits(x, "bvar")) {stop("Please provide a `bvar` object.")}
 
   y <- x[["meta"]]
 

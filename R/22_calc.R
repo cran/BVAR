@@ -1,7 +1,8 @@
-#' Calculate the log marginalised likelihood
+
+#' Calculate the log marginal likelihood
 #'
 #' @noRd
-get_logml <- function(M, N, psi, omega_ml_ev, psi_ml_ev) {
+calc_logml <- function(M, N, psi, omega_ml_ev, psi_ml_ev) {
 
   return(
     (-M * N * log(pi) / 2) + sum(lgamma(((N + M + 2) - seq.int(0, M - 1)) / 2) -
@@ -15,7 +16,7 @@ get_logml <- function(M, N, psi, omega_ml_ev, psi_ml_ev) {
 #' Calculate eigenvalues to bypass determinant computation
 #'
 #' @noRd
-get_ev <- function(
+calc_ev <- function(
   omega_inv, omega_sqrt, psi_inv,
   X, XX, Y, b, beta_hat = TRUE) {
 

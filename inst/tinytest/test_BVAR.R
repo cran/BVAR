@@ -59,12 +59,12 @@ expect_equal(
   bv_priors(hyper = c("lambda", "alpha", "psi")),
   bv_priors(hyper = c("full")))
 
-expect_silent(bv_mn(lambda = c(0.2, 0.4, 1e-6, 5),
-  alpha = c(1.5, 0.5, 0.1, 5), var = 100))
-expect_silent(bv_mn(psi = bv_psi(scale = 0.2, shape = 0.2,
-  mode = c(1, 1.5, 1.2, 0.4), min = rep(0.001, 4))))
-expect_silent(bv_mn(psi = bv_psi(scale = 0.2, shape = 0.2,
-  mode = c(1, 1.5, 1.2, 0.4), max = rep(1000, 4))))
+expect_silent(print(bv_mn(lambda = c(0.2, 0.4, 1e-6, 5),
+  alpha = c(1.5, 0.5, 0.1, 5), var = 100)))
+expect_silent(print(bv_mn(psi = bv_psi(scale = 0.2, shape = 0.2,
+  mode = c(1, 1.5, 1.2, 0.4), min = rep(0.001, 4)))))
+expect_silent(print(bv_mn(psi = bv_psi(scale = 0.2, shape = 0.2,
+  mode = c(1, 1.5, 1.2, 0.4), max = rep(1000, 4)))))
 
 # Faulty sd, dummy prior and hyperparameters
 expect_error(bv_priors(mn = bv_lambda(sd = 0)))
@@ -112,15 +112,18 @@ expect_error(bv_fcast(cond_path = matrix(rnorm(9), nrow = 3),
 expect_silent(opt_irf1 <- bv_irf(fevd = TRUE))
 expect_silent(print(opt_irf1))
 expect_silent(bv_irf(horizon = 2020, identification = FALSE))
-expect_silent(opt_irf2 <- bv_irf(
-  sign_restr = matrix(c(1, NA, NA, -1, 1, -1, -1, 1, 1), nrow = 3)))
+expect_silent(opt_irf2 <- bv_irf(fevd = FALSE, # Sign restricted
+  sign_restr = matrix(c(1, NA, NA, NA, 1, -1, -1, 1, NA), nrow = 3)))
+expect_silent(print(opt_irf2))
+expect_silent(opt_irf3 <- bv_irf(fevd = FALSE, # Zero sign restricted
+  sign_restr = matrix(c(NA, 0, NA, NA, 1, -1, NA, 1, NA), nrow = 3)))
 expect_silent(bv_irf(sign_restr = c(1, NA, -1, 1), sign_lim = 1000))
+expect_silent(bv_irf(sign_restr = c(0, NA, NA, 1), sign_lim = 1000))
 
-# Underidentified, deprecated 0, non-square restrictions and no zeros yet
+# Underidentified, too many 0, non-square restrictions
 expect_message(bv_irf(sign_restr = matrix(c(NA, NA, NA, NA), nrow = 2)))
-expect_warning(bv_irf(sign_restr = matrix(c(0, 1, -1, NA), nrow = 2)))
+expect_error(bv_irf(sign_restr = matrix(c(0, 0, -1, NA), nrow = 2)))
 expect_error(bf_irf(sign_restr = matrix(rnorm(6), nrow = 3)))
-expect_error(bf_irf(zero_restr = matrix(rnorm(9), nrow = 3)))
 
 
 # Run and analyse -----
@@ -130,7 +133,7 @@ expect_error(bf_irf(zero_restr = matrix(rnorm(9), nrow = 3)))
 # Base run
 expect_silent(run <- bvar(data, lags = 2, priors = priors, mh = mh))
 # Conditional and sign-restricted
-expect_silent(bvar(data[, 1:3], lags = 2,
+expect_silent(run2 <- bvar(data[, 1:3], lags = 2,
   fcast = opt_fcast2, irf = opt_irf2))
 
 
@@ -138,23 +141,29 @@ expect_silent(bvar(data[, 1:3], lags = 2,
 
 # Ex-post predicts and methods
 expect_silent(predict(run) <- predict(run, opt_fcast1))
-expect_silent(fcasts <- predict(run))
+expect_silent(fcasts1 <- predict(run))
+expect_silent(fcasts2 <- predict(run2))
 
-expect_silent(print(fcasts))
-expect_silent(print(summary(fcasts)))
-expect_silent(plot(fcasts, vars = 1))
+expect_silent(print(fcasts1))
+expect_silent(print(summary(fcasts1)))
+expect_silent(print(summary(fcasts2)))
+expect_silent(plot(fcasts1, vars = 1))
 
 
 # 6*_irf ---
 
 # Ex-post irfs and methods
 expect_silent(irf(run) <- irf(run, opt_irf1))
-expect_silent(irfs <- irf(run))
+expect_silent(irfs1 <- irf(run))
+expect_silent(irfs2 <- irf(run2, opt_irf2))
+expect_silent(irfs3 <- irf(run2, opt_irf3))
 
-expect_silent(print(irfs))
-expect_silent(print(summary(irfs)))
-expect_silent(print(fevd(irfs)))
-expect_silent(plot(irfs, vars_res = 1, vars_imp = 1))
+expect_silent(print(irfs1))
+expect_silent(print(summary(irfs1)))
+expect_silent(print(fevd(run))) # Access
+expect_silent(print(fevd(run2))) # Recalculates
+expect_silent(print(fevd(irfs2))) # Recalculates
+expect_silent(plot(irfs1, vars_res = 1, vars_imp = 1))
 
 
 # 80_coda ---
@@ -164,6 +173,16 @@ expect_silent(coda::as.mcmc(run))
 
 
 # 81_parallel ---
+
+library("parallel")
+cl <- makeCluster(2L)
+expect_silent(
+  tryCatch(run_par <- par_bvar(cl, n_runs = 2, data = data, lags = 2,
+    priors = priors, mh = mh), finally = stopCluster(cl)))
+expect_silent(plot(run, type = "full", vars = "lambda", chains = run_par))
+expect_silent(coda::as.mcmc(run_par, vars = "lambda"))
+expect_silent(BVAR:::chains_fit(run, run_par,
+  Ms = TRUE, n_saves = TRUE, hypers = TRUE))
 
 
 # 85_transform ---
@@ -197,6 +216,12 @@ expect_silent(plot(run, type = "trace", vars = c("lambda")))
 expect_silent(plot(run, type = "dens", vars_res = 1, vars_imp = 2))
 expect_silent(plot(run, type = "fcast", vars = 1))
 expect_silent(plot(run, type = "irf", vars_impulse = 1, vars_response = 1))
+expect_silent(plot(predict(run, conf_bands = 0.5), vars = 1))
+expect_silent(plot(predict(run, conf_bands = 0.25), vars = 3, area = TRUE))
+expect_silent(plot(irf(run, conf_bands = 0.5),
+  vars_impulse = 1, vars_response = 1))
+expect_silent(plot(irf(run, conf_bands = 0.75), area = TRUE,
+  vars_impulse = 3, vars_response = 3))
 
 
 expect_silent(print(coef(run)))
@@ -216,3 +241,5 @@ expect_silent(plot(residuals(run), vars = 1))
 expect_silent(print(summary(run)))
 
 expect_silent(print(companion(run)))
+expect_silent(print(companion(run, type = "mean")))
+expect_silent(print(companion(run, conf_bands = 0.1)))
