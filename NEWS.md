@@ -1,5 +1,10 @@
+# v1.0.3, CRAN Update 8
 
-# v1.1.0, CRAN Update 7 / JSS Release
+- Fix bug where warnings caused an error during automatic ARIMA-based priors
+  - Thanks to Martin Feldkircher for pointing this out
+
+
+# v1.0.2, CRAN Update 7 / JSS Release
 
 - Add DOI in the CITATION file for a new **JSS publication**
   - DOI will be registered after publication on CRAN
@@ -9,6 +14,7 @@
 - Add verbosity to ARIMA-based automatic prior settings
 - Add hook to simplify use of shared generics with *vars*
 - Add *README* file to the package with correct URLs
+
 
 # v1.0.1, CRAN Update 6
 

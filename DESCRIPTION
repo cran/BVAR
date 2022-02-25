@@ -1,8 +1,8 @@
 Package: BVAR
 Type: Package
 Title: Hierarchical Bayesian Vector Autoregression
-Version: 1.0.2
-Date: 2021-11-24
+Version: 1.0.3
+Date: 2022-02-25
 Authors@R: c(person("Nikolas", "Kuschnig", role = c("aut", "cre"), email = "nikolas.kuschnig@wu.ac.at", comment = c(ORCID = "0000-0002-6642-2543")),
     person("Lukas", "Vashold", role = "aut", comment = c(ORCID = "0000-0002-3562-3414")),
     person("Michael", "McCracken", role = "dtc"),
@@ -29,6 +29,6 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.2
 NeedsCompilation: no
-Packaged: 2021-11-25 09:19:56 UTC; nikolas
+Packaged: 2022-02-25 14:31:08 UTC; nikolas
 Repository: CRAN
-Date/Publication: 2021-11-26 16:11:42 UTC
+Date/Publication: 2022-02-25 15:00:11 UTC
