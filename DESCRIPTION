@@ -1,14 +1,16 @@
 Package: BVAR
 Type: Package
 Title: Hierarchical Bayesian Vector Autoregression
-Version: 1.0.3
-Date: 2022-02-25
+Version: 1.0.4
+Date: 2023-03-08
 Authors@R: c(person("Nikolas", "Kuschnig", role = c("aut", "cre"), email = "nikolas.kuschnig@wu.ac.at", comment = c(ORCID = "0000-0002-6642-2543")),
     person("Lukas", "Vashold", role = "aut", comment = c(ORCID = "0000-0002-3562-3414")),
+    person("Nirai", "Tomass", role = "ctb"),
     person("Michael", "McCracken", role = "dtc"),
     person("Serena", "Ng", role = "dtc"))
 Author: Nikolas Kuschnig [aut, cre] (<https://orcid.org/0000-0002-6642-2543>),
   Lukas Vashold [aut] (<https://orcid.org/0000-0002-3562-3414>),
+  Nirai Tomass [ctb],
   Michael McCracken [dtc],
   Serena Ng [dtc]
 Maintainer: Nikolas Kuschnig <nikolas.kuschnig@wu.ac.at>
@@ -27,8 +29,8 @@ Suggests: coda, vars, tinytest
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.3
 NeedsCompilation: no
-Packaged: 2022-02-25 14:31:08 UTC; nikolas
+Packaged: 2023-03-08 18:37:16 UTC; nikolas
 Repository: CRAN
-Date/Publication: 2022-02-25 15:00:11 UTC
+Date/Publication: 2023-03-08 19:30:06 UTC
