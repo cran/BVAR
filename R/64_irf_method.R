@@ -17,6 +17,8 @@
 #' \code{\link{bv_irf}}. Contains settings for the IRFs / FEVDs.
 #' @param n_thin Integer scalar. Every \emph{n_thin}'th draw in \emph{x} is used
 #' to calculate, others are dropped.
+#' @param verbose Logical scalar. Whether to print intermediate results and
+#' progress.
 #' @param vars_impulse,vars_response Optional numeric or character vector.
 #' Used to subset the summary method's outputs to certain variables by position
 #' or name (must be available). Defaults to \code{NULL}, i.e. all variables.
@@ -66,10 +68,11 @@
 #' # Limit the summary to responses of variable #2
 #' summary(x, vars_response = 2L)
 #' }
-irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
+irf.bvar <- function(x, ..., conf_bands, n_thin = 1L, verbose = FALSE) {
 
   dots <- list(...)
   irf_store <- x[["irf"]]
+  verbose <- isTRUE(verbose)
 
 
   # Calculate impulse responses -----
@@ -77,7 +80,7 @@ irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
   if(is.null(irf_store) || length(dots) != 0L) {
 
     # Setup ---
-
+    start_time <- Sys.time()
     irf <- if(length(dots) > 0 && inherits(dots[[1]], "bv_irf")) {
       dots[[1]]
     } else {bv_irf(...)}
@@ -96,12 +99,9 @@ irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
     sigma <- x[["sigma"]]
 
     # Check sign restrictions
-    if(!is.null(irf[["sign_restr"]]) && length(irf[["sign_restr"]]) != M ^ 2) {
-      stop("Dimensions of provided sign restrictions do not fit the data.")
-    }
-    if(!is.null(irf[["zero_restr"]]) && length(irf[["zero_restr"]]) != M ^ 2) {
-      stop("Dimensions of provided zero and sign restrictions ",
-           "do not fit the data.")
+    if(!is.null(irf[["sign_restr"]]) && length(irf[["sign_restr"]]) != M ^ 2 ||
+      !is.null(irf[["zero_restr"]]) && length(irf[["zero_restr"]]) != M ^ 2) {
+      stop("Dimensions of provided restrictions do not fit the data.")
     }
 
     # Sampling ---
@@ -116,6 +116,10 @@ irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
       class = "bvar_irf")
 
     j <- 1
+    if(verbose) {
+      cat("Calculating impulse responses.\n")
+      pb <- txtProgressBar(min = 0, max = n_save, style = 3)
+    }
     for(i in seq_len(n_save)) {
       beta_comp <- get_beta_comp(beta[j, , ], K, M, lags)
       irf_comp  <- compute_irf(
@@ -130,6 +134,12 @@ irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
           irf_comp = irf_comp, M = M, horizon = irf[["horizon"]])
       }
       j <- j + n_thin
+      if(verbose) {setTxtProgressBar(pb, j)}
+    }
+    if(verbose) {
+      close(pb)
+      timer <- Sys.time() - start_time
+      cat("Finished after ", format(round(timer, 2)), ".\n", sep = "")
     }
   } # End new impulse responses
 
@@ -146,7 +156,6 @@ irf.bvar <- function(x, ..., conf_bands, n_thin = 1L) {
       } else {fevd.bvar_irf(irf_store, c(0.16))}
     }
   }
-
 
 
   return(irf_store)
@@ -276,7 +285,8 @@ fevd.bvar_fevd <- function(x, conf_bands, ...) {
 irf <- function(x, ...) {UseMethod("irf", x)}
 
 
-#' @noRd
+#' @rdname irf.bvar
+#' @export
 irf.default <- function(x, ...) {
   stop("No methods for class ", paste0(class(x), collapse = " / "), " found.")
 }
@@ -292,7 +302,8 @@ irf.default <- function(x, ...) {
 fevd <- function(x, ...) {UseMethod("fevd", x)}
 
 
-#' @noRd
+#' @rdname irf.bvar
+#' @export
 fevd.default <- function(x, ...) {
   stop("No methods for class ", paste0(class(x), collapse = " / "), " found.")
 }

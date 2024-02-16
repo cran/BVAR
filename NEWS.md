@@ -1,3 +1,13 @@
+
+# v1.0.5, CRAN Update 10
+- Add historical decompositions and RMSE/LPS, and WAIC for analysis
+- Improve the algorithm to draw sign restrictions
+  - Shocks are now built and checked per variable
+- Fix the CRAN *NOTE* on missing "tangle output"
+- Update FRED-datasets to 2023-10 vintage
+  - Newer FRED-QD files include (unannounced) small naming changes
+
+
 # v1.0.4, CRAN Update 9
 
 - Fix bug from last update, where automatic ARIMA-priors where sqrt'd twice
